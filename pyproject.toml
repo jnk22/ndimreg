@@ -1,0 +1,178 @@
+[project]
+name = "ndimreg"
+version = "0.1.0"
+description = "3D image registration using FFT"
+authors = [{ name = "jnk22", email = "jannik.schaefer@inbox-online.de" }]
+readme = "README.md"
+license = "MIT"
+keywords = ["image", "registration", "3d", "2d", "fft", "ppft"]
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+
+# TODO: Pin dependencies to a minimum version.
+dependencies = [
+  "loguru",
+  "napari",
+  "scikit-image",
+  "scipy<2", # imreg_dft uses deprecated functions which are to be removed in SciPy 2.
+  "pytransform3d",
+  "imreg-dft",
+  "tqdm",
+  "matplotlib",
+  "pyqt6",
+  "array-api-compat>=1.9.1",
+  "numpy",
+  "polars>=1.11.0",
+  "mpire>=2.10.2",
+  "tzlocal>=5.2",
+  "cyclopts>=3.2",
+  "cachetools>=5.5.0",
+  "py-cpuinfo>=9.0.0",
+]
+
+[project.optional-dependencies]
+cuda12 = ["cupy-cuda12x>=13.3.0", "cucim-cu12>=24.10.0"]
+cuda11 = ["cupy-cuda11x>=13.3.0", "cucim-cu11>=24.10.0"]
+mkl = ["mkl-fft>=1.3.11", "mkl-service>=2.4.2"]
+pyfftw = ["pyfftw>=0.15.0"]
+
+# Experimental support for AMD.
+# CuPy 13.x does not work: https://github.com/cupy/cupy/pull/8335
+# We require CuPy <13 or >13 (>13.3 might work again, but needs to be verified).
+# As cucim >23.10.0 only exists as 'cucim-cuxx' for NVIDIA CUDA devices, we have
+# to depend on the latest non-CUDA version for now.
+# Otherwise, it is also possible to use 'cucim-24.x.x', but the dependency
+# 'cupy-cudaxxx' has to be removed manually afterwards. (When doing so, ensure
+# that the remaining installed 'cupy' is not still the CUDA version due to caching etc.).
+# TODO: Find a way to use more recent version of cucim without depending on cucim-cuxx.
+# TODO: Alternatively, also allow CuPy >=14 (or >13.3 if that also works).
+rocm-5-0 = ["cupy-rocm-5-0<13", "cucim>=23.10.0"]
+rocm-4-3 = ["cupy-rocm-4-3<13", "cucim>=23.10.0"]
+
+[project.urls]
+Documentation = "https://github.com/jnk22/ndimreg#readme"
+Issues = "https://github.com/jnk22/ndimreg/issues"
+Source = "https://github.com/jnk22/ndimreg"
+
+[project.scripts]
+ndimreg = "ndimreg.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# TODO: Pin dependencies to a minimum or exact version.
+[dependency-groups]
+dev = [
+  "pytest",
+  "pytest-xdist",
+  "pytest-cov",
+  "pyright",
+  "mypy",
+  "sourcery",
+  "uv",
+  "ruff==0.9.0",
+  "vulture",
+  "pyroma",
+  "import-linter",
+]
+test = [
+  "pytest",
+  "pytest-xdist",
+  "pytest-cov",
+]
+ci = [
+  "pytest",
+  "pytest-xdist",
+  "pytest-cov",
+]
+
+[tool.pytest.ini_options]
+markers = ["regression"]
+addopts = "-n auto --strict-markers -m 'not regression' --cov-config=pyproject.toml --cov=ndimreg --cov=tests"
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D203", "D213", "D413", "ANN401", "FIX002", "TD002", "TD003", "COM812"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false # Disabled due to 'skip-magic-trailing-comma'
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["D104", "F401"]
+"tests/*.py" = ["S101"]
+"scripts/*.py" = ["T201"]
+"ndimreg/cli/*.py" = ["T201"]
+"examples/*.ipynb" = ["T201"]
+"examples/*.py" = ["D100", "ERA001", "INP001", "T201"]
+
+[tool.ruff.format]
+docstring-code-format = true
+skip-magic-trailing-comma = true
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.pyright]
+include = ["ndimreg", "tests", "scripts"]
+exclude = ["**/__pycache__"]
+reportMissingImports = true
+reportMissingTypeStubs = true
+pythonVersion = "3.11"
+pythonPlatform = "Linux"
+
+[tool.vulture]
+paths = ["ndimreg", "tests", "scripts"]
+min_confidence = 90
+make_whitelist = true
+sort_by_size = true
+
+[tool.coverage.report]
+exclude_lines = ["if (typing\\.)?TYPE_CHECKING:"]
+
+[tool.importlinter]
+root_package = "ndimreg"
+include_external_packages = true
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "image cannot be dependent on registration and fusion module"
+type = "forbidden"
+source_modules = "ndimreg.image"
+forbidden_modules = ["ndimreg.registration", "ndimreg.pipeline", "ndimreg.processor", "ndimreg.fusion"]
+
+[[tool.importlinter.contracts]]
+name = "registration and fusion must be independent from each other"
+type = "independence"
+modules = ["ndimreg.registration", "ndimreg.fusion"]
+
+[[tool.importlinter.contracts]]
+name = "registration cannot be dependent on image wrapper"
+type = "forbidden"
+source_modules = "ndimreg.registration"
+forbidden_modules = ["ndimreg.image"]
+
+[[tool.importlinter.contracts]]
+name = "fusion cannot be dependent on image wrapper"
+type = "forbidden"
+source_modules = "ndimreg.fusion"
+forbidden_modules = ["ndimreg.image"]

@@ -1,0 +1,55 @@
+"""Verify copying of `Image3D`."""
+
+from __future__ import annotations
+
+import numpy as np
+
+from ndimreg.image import Image3D
+
+
+def test_image3d_copy_data_remains_equal() -> None:
+    """TODO."""
+    image = Image3D(np.ones((10, 10, 10)))
+    assert image.shape == (10, 10, 10)
+
+    image_copy = image.copy()
+    np.testing.assert_equal(image_copy.data, image.data)
+    assert image_copy.shape == image.shape
+
+
+def test_image3d_copy_data_memory_location_changes() -> None:
+    """TODO."""
+    image = Image3D(np.ones((10, 10, 10)))
+    assert image.shape == (10, 10, 10)
+
+    image_copy = image.copy()
+    assert image_copy.data is not image.data
+
+
+def test_image3d_copy_appends_copy_suffix() -> None:
+    """TODO."""
+    image = Image3D(np.ones((1, 1, 1)))
+    assert image.copy().name == "image3d-copy"
+
+
+def test_image3d_copy_allows_custom_name() -> None:
+    """TODO."""
+    image = Image3D(np.ones((1, 1, 1)))
+    image_copy_name = "custom-copy-name-123"
+
+    assert image.copy(name=image_copy_name).name == image_copy_name
+
+
+def test_image3d_copy_default_name() -> None:
+    """TODO."""
+    image = Image3D(np.ones((1, 1, 1)))
+
+    assert image.name == "image3d"
+
+
+def test_image3d_copy_custom_name() -> None:
+    """TODO."""
+    image_name = "custom-image-name-123"
+    image = Image3D(np.ones((1, 1, 1)), name=image_name)
+
+    assert image.name == image_name
