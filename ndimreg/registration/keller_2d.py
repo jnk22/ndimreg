@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 from array_api_compat import get_namespace
 from matplotlib import pyplot as plt
+from ppft_nd import rppft2
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor2D
@@ -27,7 +28,6 @@ from .keller_2d_utils import (
     omega_index_optimized_debug,
     omega_index_to_angle,
 )
-from .ppft import ppft2_vectorized
 from .result import RegistrationDebugImage, ResultInternal2D
 from .shift_resolver import resolve_shift
 from .translation_fft_2d import TranslationFFT2DRegistration
@@ -138,9 +138,9 @@ class Keller2DRegistration(BaseRegistration):
         mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
 
         with AutoScipyFftBackend(xp):
-            magnitudes = xp.abs(ppft2_vectorized(xp.asarray(images)))
+            magnitudes = xp.abs(rppft2(xp.asarray(images)))
 
-        merged = (merge_sectors(m, n, mask=mask, xp=xp) for m in magnitudes)
+        merged = (merge_sectors(m, mask=mask, xp=xp) for m in magnitudes)
         if self.debug:
             # Convert generator into re-usable tuple to keep for debug.
             merged = tuple(merged)

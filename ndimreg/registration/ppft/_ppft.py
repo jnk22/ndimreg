@@ -38,8 +38,9 @@ def _calculate_pq_pz(n: int, dim: int, xp: ModuleType) -> tuple[NDArray, NDArray
 @functools.cache
 def _calculate_rpq_rpz(n: int, dim: int, xp: ModuleType) -> tuple[NDArray, NDArray]:
     pq, pz = _calculate_pq_pz(n, dim, xp)
+    x = (dim * n) // 2
 
-    return pq[n:], pz[n:]
+    return pq[x:], pz[x:]
 
 
 @functools.cache

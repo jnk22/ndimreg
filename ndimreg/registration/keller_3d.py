@@ -14,6 +14,7 @@ from array_api_compat import get_namespace
 from loguru import logger
 from matplotlib.patches import Circle
 from numpy.linalg import inv
+from ppft_nd import rppft3
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor3D
@@ -22,7 +23,6 @@ from ndimreg.utils import fig_to_array, to_numpy_array, to_numpy_arrays
 from ndimreg.utils.fft import AutoScipyFftBackend
 
 from .base import BaseRegistration
-from .ppft import ppft3
 from .result import RegistrationDebugImage, ResultInternal3D
 from .rotation_axis_3d import RotationAxis3DRegistration
 from .translation_fft_3d import TranslationFFT3DRegistration
@@ -148,7 +148,6 @@ class Keller3DRegistration(BaseRegistration):
         self, fixed: NDArray, moving: NDArray, **_kwargs: Any
     ) -> ResultInternal3D:
         n = len(fixed)
-        x = (n * 3 + 1) // 2
 
         # We skip the mirrored half of the Fourier transformed output
         # and we mask the all values that exceed the radial limit of M/2
@@ -156,18 +155,17 @@ class Keller3DRegistration(BaseRegistration):
         images = (fixed, moving)
         xp = get_namespace(*images)
         mask = xp.asarray(_generate_mask(n)) if self.__highpass_filter else False
-        magnitudes = (xp.where(mask, xp.nan, xp.abs(ppft3(im))[:, x:]) for im in images)
 
         with AutoScipyFftBackend(xp):
-            if self.debug:
-                # Convert generator into re-usable tuple to keep for debug.
-                magnitudes = tuple(magnitudes)
+            magnitudes = xp.where(
+                mask, xp.nan, xp.abs(rppft3(xp.stack(images), mode="memory"))
+            )
 
-            delta_v = (
-                _calculate_delta_v_normalized
-                if self.__rotation_axis_normalization
-                else _calculate_delta_v_default
-            )(*magnitudes, xp=xp)
+        delta_v = (
+            _calculate_delta_v_normalized
+            if self.__rotation_axis_normalization
+            else _calculate_delta_v_default
+        )(*magnitudes, xp=xp)
 
         # We build the roation matrix for Z-axis alignment as defined
         # in section '4: Planar rotation'.

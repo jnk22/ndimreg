@@ -9,6 +9,7 @@ import pytransform3d.rotations as pr
 from array_api_compat import get_namespace
 from loguru import logger
 from matplotlib import pyplot as plt
+from ppft_nd import ppft2
 from scipy import fft
 from typing_extensions import override
 
@@ -28,7 +29,6 @@ from .keller_2d_utils import (
     omega_index_optimized_debug,
     omega_index_to_angle,
 )
-from .ppft import ppft2_vectorized
 from .result import RegistrationDebugImage, ResultInternal3D
 from .shift_resolver import resolve_shift
 from .translation_fft_3d import TranslationFFT3DRegistration
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 SRC: Final = (0, 1, 2)
 DEST: Final = {0: (0, 1, 2), 1: (1, 2, 0), 2: (2, 0, 1)}
-FLIPS: Final = ((slice(None),) * 3, (*(slice(None),) * 2, slice(None, None, -1)))
+FLIPS: Final = (..., (*(slice(None),) * 2, slice(None, None, -1)))
 
 
 class RotationAxis3DRegistration(BaseRegistration):
@@ -96,13 +96,14 @@ class RotationAxis3DRegistration(BaseRegistration):
         images = (fixed, moving)
         images = (xp.moveaxis(im, SRC, DEST[self.__rotation_axis]) for im in images)
         images = (im[flip] for im, flip in zip(images, FLIPS, strict=True))
+
         n = len(fixed)
         mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
 
         # PERF: This should be a vectorized operation instead.
         # NOTE: Real FFT used as only real image input data is expected.
-        ps = (xp.abs(ppft2_vectorized(fft.rfft(im, axis=0))) for im in images)
-        merged = ((merge_sectors(p, n, mask=mask, xp=xp) for p in px) for px in ps)
+        ps = (xp.abs(ppft2(fft.rfft(im, axis=0))[:, :, n:]) for im in images)
+        merged = ((merge_sectors(p, mask=mask, xp=xp) for p in px) for px in ps)
         norm = self.__rotation_normalization
 
         with AutoScipyFftBackend(xp):
