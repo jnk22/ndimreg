@@ -157,9 +157,7 @@ class Keller3DRegistration(BaseRegistration):
         mask = xp.asarray(_generate_mask(n)) if self.__highpass_filter else False
 
         with AutoScipyFftBackend(xp):
-            magnitudes = xp.where(
-                mask, xp.nan, xp.abs(rppft3(xp.stack(images), mode="memory"))
-            )
+            magnitudes = xp.where(mask, xp.nan, xp.abs(rppft3(xp.stack(images))))
 
         delta_v = (
             _calculate_delta_v_normalized
