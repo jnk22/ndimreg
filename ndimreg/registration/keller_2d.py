@@ -137,7 +137,9 @@ class Keller2DRegistration(BaseRegistration):
 
         with AutoScipyFftBackend(xp):
             magnitudes = xp.abs(
-                ppft2(images)[:, :, n:] if xp.iscomplexobj(images) else rppft2(images)
+                ppft2(images, scipy_fft=True)[:, :, n:]
+                if xp.iscomplexobj(images)
+                else rppft2(images, scipy_fft=True)
             )
 
         mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False

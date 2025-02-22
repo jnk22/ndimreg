@@ -102,7 +102,10 @@ class RotationAxis3DRegistration(BaseRegistration):
 
         # PERF: This should be a vectorized operation instead.
         # NOTE: Real FFT used as only real image input data is expected.
-        ps = (xp.abs(ppft2(fft.rfft(im, axis=0))[:, :, n:]) for im in images)
+        ps = (
+            xp.abs(ppft2(fft.rfft(im, axis=0), scipy_fft=True)[:, :, n:])
+            for im in images
+        )
         merged = ((merge_sectors(p, mask=mask, xp=xp) for p in px) for px in ps)
         norm = self.__rotation_normalization
 
