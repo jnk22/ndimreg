@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 SRC: Final = (0, 1, 2)
 DEST: Final = {0: (0, 1, 2), 1: (1, 2, 0), 2: (2, 0, 1)}
-FLIPS: Final = (..., (*(slice(None),) * 2, slice(None, None, -1)))
+FLIPS: Final = (..., (..., slice(None, None, -1)))
 
 
 class RotationAxis3DRegistration(BaseRegistration):
