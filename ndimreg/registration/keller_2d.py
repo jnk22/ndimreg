@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 from array_api_compat import get_namespace
 from matplotlib import pyplot as plt
-from ppft_nd import rppft2
+from ppft_nd import ppft2, rppft2
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor2D
@@ -133,13 +133,14 @@ class Keller2DRegistration(BaseRegistration):
     ) -> ResultInternal2D:
         xp = get_namespace(fixed, moving)
         n = len(fixed)
-
-        images = (fixed, moving[:, ::-1])
-        mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
+        images = xp.stack((fixed, moving[:, ::-1]))
 
         with AutoScipyFftBackend(xp):
-            magnitudes = xp.abs(rppft2(xp.asarray(images)))
+            magnitudes = xp.abs(
+                ppft2(images)[:, :, n:] if xp.iscomplexobj(images) else rppft2(images)
+            )
 
+        mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
         merged = (merge_sectors(m, mask=mask, xp=xp) for m in magnitudes)
         if self.debug:
             # Convert generator into re-usable tuple to keep for debug.
