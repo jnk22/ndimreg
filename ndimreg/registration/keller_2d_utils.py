@@ -58,18 +58,6 @@ def omega_index_to_angle(index: float | NDArray, n: int) -> float | NDArray:
     return 2 * np.arctan2(2 * (index - n // 2), n)
 
 
-def merge_sectors_axis(m: NDArray, *, mask: NDArray | bool, xp: ModuleType) -> NDArray:
-    """TODO."""
-    # Using a mask for exluding points from a ray that exceed the
-    # radial limit is supposed to remove high-frequency values.
-    # Slicing the data starting from 'n' cuts off the mirrored data that
-    # exists due to the Fourier Transform (PPFT2D).
-    m1 = xp.where(mask, xp.nan, m[0])
-    m2 = xp.where(mask, xp.nan, m[1])
-
-    return xp.hstack((m1, m2[:, -2:0:-1])).T
-
-
 def merge_sectors(m: NDArray, *, mask: NDArray | bool, xp: ModuleType) -> NDArray:
     """TODO."""
     # Using a mask for exluding points from a ray that exceed the
