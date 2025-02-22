@@ -46,7 +46,6 @@ if TYPE_CHECKING:
 
 SRC: Final = (0, 1, 2)
 DEST: Final = {0: (0, 1, 2), 1: (1, 2, 0), 2: (2, 0, 1)}
-FLIPS: Final = (..., (..., slice(None, None, -1)))
 
 
 class RotationAxis3DRegistration(BaseRegistration):
@@ -94,27 +93,23 @@ class RotationAxis3DRegistration(BaseRegistration):
         xp = get_namespace(fixed, moving)
 
         images = (fixed, moving)
-        images = (xp.moveaxis(im, SRC, DEST[self.__rotation_axis]) for im in images)
-        images = (im[flip] for im, flip in zip(images, FLIPS, strict=True))
+        transposed = (xp.moveaxis(im, SRC, DEST[self.__rotation_axis]) for im in images)
+        flipped = (
+            im if i == 0 else xp.flip(im, axis=-1) for i, im in enumerate(transposed)
+        )
+        fft_images = (fft.rfft(im, axis=0) for im in flipped)
 
         n = len(fixed)
-        mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
+        magnitudes = (xp.abs(ppft2(im, scipy_fft=True)[:, :, n:]) for im in fft_images)
 
-        # PERF: This should be a vectorized operation instead.
-        # NOTE: Real FFT used as only real image input data is expected.
-        ps = (
-            xp.abs(ppft2(fft.rfft(im, axis=0), scipy_fft=True)[:, :, n:])
-            for im in images
-        )
-        merged = ((merge_sectors(p, mask=mask, xp=xp) for p in px) for px in ps)
-        norm = self.__rotation_normalization
+        mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
+        merged = (merge_sectors(im, mask=mask, xp=xp) for im in magnitudes)
 
         with AutoScipyFftBackend(xp):
-            omega_layers = xp.asarray(
-                [
-                    calculate_omega(calculate_delta_m(*mx, normalization=norm, xp=xp))
-                    for mx in zip(*merged, strict=True)
-                ]
+            omega_layers = calculate_omega(
+                calculate_delta_m(
+                    *merged, normalization=self.__rotation_normalization, xp=xp
+                )
             )
 
         # We then use eq. 4.4 to select the layer with the lowest value.

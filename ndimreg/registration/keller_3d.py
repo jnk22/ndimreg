@@ -156,16 +156,16 @@ class Keller3DRegistration(BaseRegistration):
         xp = get_namespace(*images)
         mask = xp.asarray(_generate_mask(n)) if self.__highpass_filter else False
 
-        with AutoScipyFftBackend(xp):
-            magnitudes = xp.where(
-                mask, xp.nan, xp.abs(rppft3(xp.stack(images), scipy_fft=True))
-            )
+        magnitudes = (
+            xp.where(mask, xp.nan, xp.abs(rppft3(im, scipy_fft=True))) for im in images
+        )
 
-        delta_v = (
-            _calculate_delta_v_normalized
-            if self.__rotation_axis_normalization
-            else _calculate_delta_v_default
-        )(*magnitudes, xp=xp)
+        with AutoScipyFftBackend(xp):
+            delta_v = (
+                _calculate_delta_v_normalized
+                if self.__rotation_axis_normalization
+                else _calculate_delta_v_default
+            )(*magnitudes, xp=xp)
 
         # We build the roation matrix for Z-axis alignment as defined
         # in section '4: Planar rotation'.

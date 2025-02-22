@@ -64,16 +64,17 @@ def merge_sectors(m: NDArray, *, mask: NDArray | bool, xp: ModuleType) -> NDArra
     # radial limit is supposed to remove high-frequency values.
     # Slicing the data starting from 'n' cuts off the mirrored data that
     # exists due to the Fourier Transform (PPFT2D).
-    m1 = xp.where(mask, xp.nan, m[0])
-    m2 = xp.where(mask, xp.nan, m[1])
+    m1 = xp.where(mask, xp.nan, m[..., 0, :, :])
+    m2 = xp.where(mask, xp.nan, m[..., 1, :, :])
+    stacked = xp.concatenate((m1, m2[..., :, -2:0:-1]), axis=-1)
 
-    return xp.hstack((m1, m2[:, -2:0:-1])).T
+    return xp.moveaxis(stacked, -1, -2)
 
 
 def calculate_omega(delta_m: DeltaMArray) -> OmegaArray:
     """TODO."""
-    n = len(delta_m) // 2
-    return delta_m[:n] + delta_m[n:]
+    n = delta_m.shape[-1] // 2
+    return delta_m[..., :n] + delta_m[..., n:]
 
 
 def calculate_delta_m(
@@ -94,7 +95,7 @@ def highpass_filter_mask(n: int) -> NDArray:
 def __calculate_delta_m_default(
     m1: NDArray, m2: NDArray, *, xp: ModuleType
 ) -> DeltaMArray:
-    n = len(m1[0]) - 1
+    n = m1.shape[-1] - 1
     rsi = __generate_radial_sampling_intervals(n)
 
     # We combine multiple radial sampling intervals as
@@ -103,20 +104,21 @@ def __calculate_delta_m_default(
     # equivalent to the first element in the array.
     rsi_combined = xp.hstack((rsi, rsi[1:-1]))
 
-    return xp.nansum(xp.abs(m1 - m2) * rsi_combined[:, None], axis=1)
+    return xp.nansum(xp.abs(m1 - m2) * rsi_combined[:, None], axis=-1)
 
 
 def __calculate_delta_m_normalized(
     m1: NDArray, m2: NDArray, *, xp: ModuleType
 ) -> DeltaMArray:
-    counts_1 = xp.sum(~xp.isnan(m1), axis=1)
-    counts_2 = xp.sum(~xp.isnan(m2), axis=1)
-    mean_1 = m1 - xp.nanmean(m1, axis=1, keepdims=True)
-    mean_2 = m2 - xp.nanmean(m2, axis=1, keepdims=True)
-    std_1 = xp.sqrt((1 / counts_1) * xp.nansum((m1 - mean_1) ** 2, axis=1))
-    std_2 = xp.sqrt((1 / counts_2) * xp.nansum((m2 - mean_2) ** 2, axis=1))
+    # TODO: Use nansum?
+    counts_1 = xp.sum(~xp.isnan(m1), axis=-1)
+    counts_2 = xp.sum(~xp.isnan(m2), axis=-1)
+    mean_1 = m1 - xp.nanmean(m1, axis=-1, keepdims=True)
+    mean_2 = m2 - xp.nanmean(m2, axis=-1, keepdims=True)
+    std_1 = xp.sqrt((1 / counts_1) * xp.nansum((m1 - mean_1) ** 2, axis=-1))
+    std_2 = xp.sqrt((1 / counts_2) * xp.nansum((m2 - mean_2) ** 2, axis=-1))
 
-    return xp.nansum((mean_1 - mean_2) ** 2, axis=1) / (std_1 * std_2)
+    return xp.nansum((mean_1 - mean_2) ** 2, axis=-1) / (std_1 * std_2)
 
 
 @functools.lru_cache
@@ -125,7 +127,7 @@ def __generate_radial_sampling_intervals(n: int) -> NDArray:
     rsi = np.sqrt(4 * ((np.arange(n // 2 + 1) / n) ** 2) + 1)
 
     # And return combined as [1.41, ..., 1, ..., 1.41].
-    return np.array((*rsi[:0:-1], *rsi))
+    return np.stack((*rsi[:0:-1], *rsi))
 
 
 def __omega_indices(omega: OmegaArray) -> tuple[int, int, int]:
