@@ -117,8 +117,6 @@ class RotationAxis3DRegistration(BaseRegistration):
         # We then use eq. 4.4 to select the layer with the lowest value.
         # That layer then represents the best omega value which we use
         # for rotation estimation on a single axis.
-        # TODO: Find out what what minimum resembles the one defined in paper.
-        # See debug output for possible solutions.
         min_index = xp.unravel_index(xp.argmin(omega_layers), omega_layers.shape)[0]
         logger.debug(f"Minimum index: {min_index} (layer {min_index + 1}/{n})")
 

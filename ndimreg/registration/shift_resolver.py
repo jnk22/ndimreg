@@ -46,11 +46,9 @@ def resolve_shift(
         lower error (i.e., rotation must be flipped).
         Second element is the recovered shift.
     """
-    # TODO: Add support for returning debug images.
-    # TODO: Test whether half of the data is sufficient.
     # TODO: Test whether rotating FFT is equal to FFT2 of rotated image.
-    # TODO: Try to use 'rfftn' instead.
-    # TODO: Do not require input translation registration instance but create own.
+    # TODO: Test whether 'real' FFT can be used instead.
+    # TODO: Use fallback instance for translation registration method.
     xp = get_namespace(fixed, moving)
 
     with AutoScipyFftBackend(xp):
