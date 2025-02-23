@@ -14,7 +14,7 @@ from array_api_compat import get_namespace
 from loguru import logger
 from matplotlib.patches import Circle
 from numpy.linalg import inv
-from ppft_nd import rppft3
+from ppft_nd import ppft3, rppft3
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor3D
@@ -85,10 +85,10 @@ class Keller3DRegistration(BaseRegistration):
         rotation_axis_vectorized: bool = False,
         rotation_angle_normalization: bool = True,
         rotation_angle_optimization: bool = True,
+        rotation_angle_vectorized: bool = False,
         rotation_angle_shift_normalization: bool = True,
         rotation_angle_shift_disambiguate: bool = False,  # WARNING: True does not work.
         rotation_angle_shift_upsample_factor: int = 1,
-        rotation_angle_vectorized: bool = False,
         shift_normalization: bool = True,
         shift_disambiguate: bool = False,
         shift_upsample_factor: int = 1,
@@ -151,31 +151,29 @@ class Keller3DRegistration(BaseRegistration):
     def _register(
         self, fixed: NDArray, moving: NDArray, **_kwargs: Any
     ) -> ResultInternal3D:
-        n = len(fixed)
-
-        # We skip the mirrored half of the Fourier transformed output
-        # and we mask the all values that exceed the radial limit of M/2
-        # as defined in formula 3.8 and 3.9.
         images = (fixed, moving)
         xp = get_namespace(*images)
-        mask = xp.asarray(_generate_mask(n)) if self.__highpass_filter else False
+        n = len(fixed)
 
-        vec = self.__rotation_axis_vectorized
+        is_complex = any(xp.iscomplexobj(im) for im in images)
+        ppft_func, idx = (ppft3, n) if is_complex else (rppft3, 0)
+        ppft_kwargs = {"vectorized": self.__rotation_axis_vectorized, "scipy_fft": True}
+        mask = _generate_mask(n, xp) if self.__highpass_filter else False
+
         magnitudes = (
-            xp.where(mask, xp.nan, xp.abs(rppft3(im, scipy_fft=True, vectorized=vec)))
+            xp.where(mask, xp.nan, xp.abs(ppft_func(im, **ppft_kwargs)[:, :, idx:]))
             for im in images
         )
+
+        normalized = self.__rotation_axis_normalization
+        delta_v_func = _delta_v_normalized if normalized else _delta_v_default
 
         with AutoScipyFftBackend(xp):
             if self.debug:
                 # Convert generator into re-usable tuple to keep for debug.
                 magnitudes = tuple(magnitudes)
 
-            delta_v = (
-                _calculate_delta_v_normalized
-                if self.__rotation_axis_normalization
-                else _calculate_delta_v_default
-            )(*magnitudes, xp=xp)
+            delta_v = delta_v_func(*magnitudes, xp=xp)
 
         # We build the roation matrix for Z-axis alignment as defined
         # in section '4: Planar rotation'.
@@ -183,11 +181,7 @@ class Keller3DRegistration(BaseRegistration):
         axis_angle = pr.axis_angle_from_two_directions(U1, u2)
         rot_mat_r_tilde = pr.matrix_from_axis_angle(axis_angle)
 
-        # We align both volumes onto a single axis, here, the Z-axis.
-        # The actual Z-axis can be dependent on the viewer and/or the
-        # definition of X, Y, and Z axes of the input images.
-        # However, the Z-axis in this algorithm is independent of the
-        # 'viewer's Z-axis'.
+        # We align both volumes onto the Z-axis.
         tilde_images = (self._transform(im, rotation=rot_mat_r_tilde) for im in images)
 
         if self.debug:
@@ -210,7 +204,7 @@ class Keller3DRegistration(BaseRegistration):
             debug_data = (*tilde_images, moving_rotated)
             debug_names = ("v1-tilde", "v2-tilde", "moving-rerotated")
             debug_images = [
-                *_create_magnitude_debug_images(tuple(magnitudes)),
+                *__create_magnitude_debug_images(tuple(magnitudes)),
                 *self._build_debug_images(debug_data, debug_names),
             ]
         else:
@@ -223,20 +217,20 @@ class Keller3DRegistration(BaseRegistration):
 
 
 @functools.lru_cache
-def _generate_mask(n: int) -> NDArray:
+def _generate_mask(n: int, xp: ModuleType) -> NDArray:
     radial_limit = (3 * n + 1) / 2
-    rsi = _generate_radial_sampling_intervals(n)
-    distances = rsi * np.arange(np.ceil(radial_limit))[:, None, None]
+    rsi = __generate_radial_sampling_intervals(n, xp)
+    distances = rsi * xp.arange(radial_limit)[:, None, None]
 
     return (distances > radial_limit)[None, :]
 
 
 @functools.lru_cache
-def _generate_radial_sampling_intervals(n: int) -> NDArray:
+def __generate_radial_sampling_intervals(n: int, xp: ModuleType) -> NDArray:
     target_shape = (n + 1, n + 1)
-    x = (-2 * (np.array(list(np.ndindex(target_shape))) - n // 2) / n) ** 2 + 0.5
+    x = (-2 * (xp.array(tuple(xp.ndindex(target_shape))) - n // 2) / n) ** 2 + 0.5
 
-    return np.sqrt(x.sum(axis=1)).reshape(target_shape)
+    return xp.sqrt(xp.sum(x, axis=1)).reshape(target_shape)
 
 
 def _calculate_ppft3_angles(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
@@ -245,14 +239,12 @@ def _calculate_ppft3_angles(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
     sector = min_index[0].item() + 1
 
     pseudopolar_coords = (1, *(np.array(min_index[1:]) - n // 2))
-    cartesian_coords = _pseudopolar_to_cartesian(pseudopolar_coords, sector, n)
+    cartesian_coords = __pseudopolar_to_cartesian(pseudopolar_coords, sector, n)
 
     return pc.spherical_from_cartesian(cartesian_coords)[1:]
 
 
-def _calculate_delta_v_normalized(
-    m1: NDArray, m2: NDArray, *, xp: ModuleType
-) -> NDArray:
+def _delta_v_normalized(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
     # This is the implementation of the 'normalized correlation',
     # equation 3.9. This does not seem to produce anything useful
     # yet in comparison to the non-normalized version.
@@ -266,12 +258,12 @@ def _calculate_delta_v_normalized(
     return -(xp.nansum(x1 * x2, axis=1) / denominator)
 
 
-def _calculate_delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
-    rsi = xp.asarray(_generate_radial_sampling_intervals(m1.shape[2] - 1))
+def _delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
+    rsi = __generate_radial_sampling_intervals(m1.shape[2] - 1, xp)
     return xp.nansum(xp.abs(m1 - m2) * rsi, axis=1)
 
 
-def _pseudopolar_to_cartesian(
+def __pseudopolar_to_cartesian(
     coordinates: tuple[int, int, int], sector: Literal[1, 2, 3], n: int
 ) -> tuple[float, float, float]:
     k, i, j = coordinates
@@ -285,7 +277,7 @@ def _pseudopolar_to_cartesian(
             return -2 * i * k / n, -2 * j * k / n, k
 
 
-def _create_magnitude_debug_images(
+def __create_magnitude_debug_images(
     magnitudes: Sequence[NDArray],
 ) -> list[RegistrationDebugImage]:
     # TODO: Add angles to x/y.
@@ -295,8 +287,8 @@ def _create_magnitude_debug_images(
     # TODO: Add spherical output using 3D rotation vectors (pytransform3d?).
 
     magnitudes = tuple(to_numpy_arrays(*magnitudes))
-    delta_v_norm = _calculate_delta_v_normalized(*magnitudes, xp=np)
-    delta_v_default = _calculate_delta_v_default(*magnitudes, xp=np)
+    delta_v_norm = _delta_v_normalized(*magnitudes, xp=np)
+    delta_v_default = _delta_v_default(*magnitudes, xp=np)
 
     mpl.rc("font", size=8)
     # TODO: Check whether this is really faster.
