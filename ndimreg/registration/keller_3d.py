@@ -82,11 +82,13 @@ class Keller3DRegistration(BaseRegistration):
         *,
         rotation_axis_normalization: bool = False,  # NOTE: WIP.
         rotation_axis_optimization: bool = False,  # NOTE: Not yet implemented.
+        rotation_axis_vectorized: bool = False,
         rotation_angle_normalization: bool = True,
         rotation_angle_optimization: bool = True,
         rotation_angle_shift_normalization: bool = True,
         rotation_angle_shift_disambiguate: bool = False,  # WARNING: True does not work.
         rotation_angle_shift_upsample_factor: int = 1,
+        rotation_angle_vectorized: bool = False,
         shift_normalization: bool = True,
         shift_disambiguate: bool = False,
         shift_upsample_factor: int = 1,
@@ -118,6 +120,7 @@ class Keller3DRegistration(BaseRegistration):
 
         self.__rotation_axis_normalization: bool = rotation_axis_normalization
         self.__rotation_axis_optimization: bool = rotation_axis_optimization
+        self.__rotation_axis_vectorized: bool = rotation_axis_vectorized
         self.__highpass_filter: bool = highpass_filter
 
         # TODO: Test parameters 'disambiguate' and 'normalization'.
@@ -128,6 +131,7 @@ class Keller3DRegistration(BaseRegistration):
             shift_upsample_factor=rotation_angle_shift_upsample_factor,
             rotation_optimization=rotation_angle_optimization,
             rotation_normalization=rotation_angle_normalization,
+            rotation_vectorized=rotation_angle_vectorized,
             debug=self.debug,
         )
 
@@ -156,8 +160,10 @@ class Keller3DRegistration(BaseRegistration):
         xp = get_namespace(*images)
         mask = xp.asarray(_generate_mask(n)) if self.__highpass_filter else False
 
-        magnitudes = (
-            xp.where(mask, xp.nan, xp.abs(rppft3(im, scipy_fft=True))) for im in images
+        vec = self.__rotation_axis_vectorized
+        masked = (
+            xp.where(mask, xp.nan, xp.abs(rppft3(im, scipy_fft=True, vectorized=vec)))
+            for im in images
         )
 
         with AutoScipyFftBackend(xp):
@@ -165,7 +171,7 @@ class Keller3DRegistration(BaseRegistration):
                 _calculate_delta_v_normalized
                 if self.__rotation_axis_normalization
                 else _calculate_delta_v_default
-            )(*magnitudes, xp=xp)
+            )(*masked, xp=xp)
 
         # We build the roation matrix for Z-axis alignment as defined
         # in section '4: Planar rotation'.
@@ -200,7 +206,7 @@ class Keller3DRegistration(BaseRegistration):
             debug_data = (*tilde_images, moving_rotated)
             debug_names = ("v1-tilde", "v2-tilde", "moving-rerotated")
             debug_images = [
-                *_create_magnitude_debug_images(tuple(magnitudes)),
+                *_create_magnitude_debug_images(tuple(masked)),
                 *self._build_debug_images(debug_data, debug_names),
             ]
         else:

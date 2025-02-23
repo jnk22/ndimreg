@@ -81,6 +81,7 @@ class Keller2DRegistration(BaseRegistration):
         *,
         rotation_normalization: bool = True,
         rotation_optimization: bool = True,
+        rotation_vectorized: bool = False,
         highpass_filter: bool = True,
         shift_normalization: bool = False,
         shift_disambiguate: bool = False,
@@ -112,6 +113,7 @@ class Keller2DRegistration(BaseRegistration):
 
         self.__rotation_normalization: bool = rotation_normalization
         self.__rotation_optimization: bool = rotation_optimization
+        self.__rotation_vectorized: bool = rotation_vectorized
         self.__highpass_filter: bool = highpass_filter
 
         self.__shift_registration = TranslationFFT2DRegistration(
@@ -135,15 +137,16 @@ class Keller2DRegistration(BaseRegistration):
         n = len(fixed)
         images = xp.stack((fixed, moving[:, ::-1]))
 
+        ppft_func, idx = (ppft2, n) if xp.iscomplexobj(images) else (rppft2, 0)
+        ppft_kwargs = {"vectorized": self.__rotation_vectorized, "scipy_fft": True}
+        mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
+
         with AutoScipyFftBackend(xp):
-            magnitudes = xp.abs(
-                ppft2(images, scipy_fft=True)[:, :, n:]
-                if xp.iscomplexobj(images)
-                else rppft2(images, scipy_fft=True)
+            magnitudes = xp.where(
+                mask, xp.nan, xp.abs(ppft_func(images, **ppft_kwargs)[:, :, idx:])
             )
 
-        mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
-        merged = (merge_sectors(m, mask=mask, xp=xp) for m in magnitudes)
+        merged = (merge_sectors(m, xp=xp) for m in magnitudes)
         if self.debug:
             # Convert generator into re-usable tuple to keep for debug.
             merged = tuple(merged)

@@ -57,6 +57,7 @@ class RotationAxis3DRegistration(BaseRegistration):
         *,
         rotation_normalization: bool = True,
         rotation_optimization: bool = True,
+        rotation_vectorized: bool = False,
         highpass_filter: bool = True,
         shift_normalization: bool = True,
         shift_disambiguate: bool = False,  # WARNING: Does not work on GPU.
@@ -71,6 +72,7 @@ class RotationAxis3DRegistration(BaseRegistration):
         self.__rotation_axis: RotationAxis3DIndex = AXIS_MAPPING[axis][1]
         self.__rotation_normalization: bool = rotation_normalization
         self.__rotation_optimization: bool = rotation_optimization
+        self.__rotation_vectorized: bool = rotation_vectorized
         self.__highpass_filter: bool = highpass_filter
 
         self.__shift_registration = TranslationFFT3DRegistration(
@@ -97,13 +99,19 @@ class RotationAxis3DRegistration(BaseRegistration):
         flipped = (
             im if i == 0 else xp.flip(im, axis=-1) for i, im in enumerate(transposed)
         )
+
+        # TODO: Support complex image input.
         fft_images = (fft.rfft(im, axis=0) for im in flipped)
 
         n = len(fixed)
-        magnitudes = (xp.abs(ppft2(im, scipy_fft=True)[:, :, n:]) for im in fft_images)
-
         mask = xp.asarray(highpass_filter_mask(n)) if self.__highpass_filter else False
-        merged = (merge_sectors(im, mask=mask, xp=xp) for im in magnitudes)
+        ppft_kwargs = {"vectorized": self.__rotation_vectorized, "scipy_fft": True}
+
+        magnitudes = (
+            xp.where(mask, xp.nan, xp.abs(ppft2(im, **ppft_kwargs)[:, :, n:]))
+            for im in fft_images
+        )
+        merged = (merge_sectors(im, xp=xp) for im in magnitudes)
 
         with AutoScipyFftBackend(xp):
             omega_layers = calculate_omega(
