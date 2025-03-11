@@ -123,8 +123,8 @@ class Keller2DRegistration(BaseRegistration):
 
         rotation = _resolve_rotation(
             images,
-            len(fixed),
-            xp,
+            n=len(fixed),
+            xp=xp,
             vectorized=self.__rotation_vectorized,
             normalized=self.__rotation_normalization,
             optimized=self.__rotation_optimization,

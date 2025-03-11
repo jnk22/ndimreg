@@ -84,14 +84,13 @@ class RotationAxis3DRegistration(BaseRegistration):
 
         rotation = _resolve_rotation(
             (xp.moveaxis(im, SRC, DEST[self.__rotation_axis]) for im in images),
-            len(fixed),
-            xp,
+            n=len(fixed),
+            xp=xp,
             vectorized=self.__rotation_vectorized,
             normalized=self.__rotation_normalization,
             optimized=self.__rotation_optimization,
-            apply_fft=True,
             highpass_filter=self.__highpass_filter,
-            is_complex=True,
+            apply_fft=True,
         )
 
         moving_rotated = rotate_axis(

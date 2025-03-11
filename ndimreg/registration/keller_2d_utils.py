@@ -32,24 +32,24 @@ OmegaArray = Annotated[NDArray[DType], Literal["N"]]
 
 def _resolve_rotation(
     images: Iterable[NDArray],
+    *,
     n: int,
     xp: ModuleType,
-    *,
     vectorized: bool,
     normalized: bool,
     optimized: bool,
     highpass_filter: bool,
-    is_complex: bool,
+    is_complex: bool = False,
     apply_fft: bool = False,
 ) -> Any:
     images = (im if i == 0 else xp.flip(im, axis=-1) for i, im in enumerate(images))
     rsi = __generate_radial_sampling_intervals(n, xp=xp)
-    mask = __generate_mask(n, rsi, xp) if highpass_filter else False
+    mask = __generate_mask(n, xp=xp) if highpass_filter else False
 
     if apply_fft:
         images = (fft.rfft(im, axis=0) for im in images)
 
-    ppft_func, idx = (ppft2, n) if is_complex else (rppft2, 0)
+    ppft_func, idx = (ppft2, n) if is_complex or apply_fft else (rppft2, 0)
     ppft_kwargs = {"vectorized": vectorized, "scipy_fft": True}
 
     merged = (
@@ -87,14 +87,16 @@ def _resolve_rotation(
 
 @functools.lru_cache
 def __generate_radial_sampling_intervals(n: int, xp: ModuleType) -> NDArray:
-    # Create the radial sampling intervals in ascending order: [1, ..., 1.41]
     rsi = xp.sqrt(4 * ((xp.arange(n // 2 + 1) / n) ** 2) + 1)
 
     # And return combined as [1.41, ..., 1, ..., 1.41].
     return xp.stack((*rsi[:0:-1], *rsi))
 
 
-def __generate_mask(n: int, rsi: NDArray, xp: ModuleType) -> NDArray:
+@functools.lru_cache
+def __generate_mask(n: int, *, xp: ModuleType) -> NDArray:
+    rsi = __generate_radial_sampling_intervals(n, xp=xp)
+
     return (xp.arange(n + 1) * rsi[:, None] > n).T
 
 
