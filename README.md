@@ -1,11 +1,13 @@
 # ndimreg
 
-[![Python version](https://img.shields.io/badge/python-3.11%20|%203.12-blue)](./pyproject.toml)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ndimreg)](https://github.com/jnk22/ndimreg/blob/main/pyproject.toml)
+[![PyPI - Implementation](https://img.shields.io/pypi/implementation/ndimreg)](https://github.com/jnk22/ndimreg/blob/main/pyproject.toml)
+[![ci](https://github.com/jnk22/ndimreg/actions/workflows/ci.yml/badge.svg)](https://github.com/jnk22/ndimreg/actions/workflows/ci.yml)
+[![ReadtheDocs](https://readthedocs.org/projects/ndimreg/badge/?version=latest)](https://ndimreg.readthedocs.io)
+[![codecov](https://codecov.io/github/jnk22/ndimreg/graph/badge.svg?token=5EJL318F1D)](https://codecov.io/github/jnk22/ndimreg)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
-[![Checked with pyright](https://microsoft.github.io/pyright/img/pyright_badge.svg)](https://microsoft.github.io/pyright/)
-[![GitHub License](https://img.shields.io/github/license/jnk22/ndimreg)](./LICENSE)
+[![PyPI - License](https://img.shields.io/pypi/l/ndimreg)](https://github.com/jnk22/ndimreg/blob/main/LICENSE)
 
 This is a library and CLI for image registrations and image transformations
 supporting 2D and 3D images.
