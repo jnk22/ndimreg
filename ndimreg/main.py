@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from cyclopts import App
 
+from ._version import version
 from .cli import benchmark, debug, register, tools, transform
 
 # TODO: Add debug/results show difference (default true for results, false for debug).
@@ -13,7 +14,7 @@ from .cli import benchmark, debug, register, tools, transform
 # TODO: Make pre-processing order configurable.
 # TODO: Implement 3D compatible pre-processing functions.
 
-app = App(version="0.2.0")
+app = App(version=version)
 
 app.command(register.app)
 app.command(transform.app)

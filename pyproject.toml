@@ -1,12 +1,12 @@
 [project]
 name = "ndimreg"
-version = "0.1.0"
 description = "3D image registration using FFT"
 authors = [{ name = "jnk22", email = "jannik.schaefer@inbox-online.de" }]
 readme = "README.md"
 license = "MIT"
 keywords = ["image", "registration", "3d", "2d", "fft", "ppft"]
 requires-python = ">=3.11"
+dynamic = ["version"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Intended Audience :: Science/Research",
@@ -70,9 +70,6 @@ Source = "https://github.com/jnk22/ndimreg"
 [project.scripts]
 ndimreg = "ndimreg.main:app"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 # TODO: Pin dependencies to a minimum or exact version.
 [dependency-groups]
@@ -103,6 +100,18 @@ ci = [
 [tool.pytest.ini_options]
 markers = ["regression"]
 addopts = "-n auto --strict-markers -m 'not regression' --cov-config=pyproject.toml --cov=ndimreg --cov=tests"
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+metadata = false
 
 [tool.ruff]
 target-version = "py311"
