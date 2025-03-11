@@ -43,7 +43,9 @@ class Timer:
     includes support for intervals.
     """
 
-    def __init__(self, name: str | None = None, interval_name: str | None = None) -> None:
+    def __init__(
+        self, name: str | None = None, interval_name: str | None = None
+    ) -> None:
         """Initialize the timer.
 
         Arguments:
