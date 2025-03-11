@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -13,6 +13,9 @@ from typing_extensions import override
 from ndimreg.utils import to_numpy_array
 
 from .image import Image
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 class Image2D(Image):

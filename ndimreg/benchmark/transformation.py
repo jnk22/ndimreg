@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 from pytransform3d.rotations import norm_angle, norm_euler, quaternion_from_euler
 from scipy.spatial.distance import euclidean
@@ -18,6 +18,8 @@ from ndimreg.utils.diffs import (
 )
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from ndimreg.transform import RotationAxis
 
 

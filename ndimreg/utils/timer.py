@@ -5,11 +5,13 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import TracebackType
+
+    from typing_extensions import Self
 
 MILLI_SECONDS_DIFF = 1e-0
 MICRO_SECONDS_DIFF = 1e-3

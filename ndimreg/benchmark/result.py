@@ -8,7 +8,7 @@ from dataclasses import KW_ONLY, asdict, dataclass, field
 from datetime import datetime
 from importlib import metadata
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Literal, Self
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 import cpuinfo
 import polars as pl
@@ -25,6 +25,8 @@ from .transformation import BenchmarkTransformationDiff
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from typing_extensions import Self
 
     from ndimreg.benchmark.parameters import BenchmarkImagePreprocessing
     from ndimreg.image.image import Device

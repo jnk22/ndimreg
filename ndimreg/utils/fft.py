@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Final, Literal, Self
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from array_api_compat import get_namespace, is_cupy_namespace
 from scipy import fft
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from types import ModuleType, TracebackType
 
     from numpy.typing import NDArray
+    from typing_extensions import Self
 
 CpuFftBackend = Literal["scipy", "pyfftw", "mkl"]
 FftBackend = CpuFftBackend | Literal["cupy"]

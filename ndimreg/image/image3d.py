@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import itertools
-from typing import TYPE_CHECKING, Any, Final, Literal, Self
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 import napari
 from loguru import logger
@@ -17,6 +17,7 @@ from .image import Image
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+    from typing_extensions import Self
 
     from ndimreg.transform.types import RotationAxis3D
 

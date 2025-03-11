@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import skimage
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from types import ModuleType
 
     from numpy.typing import NDArray
+    from typing_extensions import Self
 
     from ndimreg.fusion import Fusion
     from ndimreg.registration import Registration, RegistrationResult

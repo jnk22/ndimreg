@@ -5,7 +5,7 @@ authors = [{ name = "jnk22", email = "jannik.schaefer@inbox-online.de" }]
 readme = "README.md"
 license = "MIT"
 keywords = ["image", "registration", "3d", "2d", "fft", "ppft"]
-requires-python = ">=3.11,<4"
+requires-python = ">=3.10,<4"
 dynamic = ["version"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
@@ -15,6 +15,7 @@ classifiers = [
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering",
@@ -117,7 +118,6 @@ lint = [
   "import-linter",
 ]
 
-
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
@@ -131,7 +131,7 @@ style = "pep440"
 metadata = false
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 disallow_untyped_defs = true
 disallow_any_unimported = true
 no_implicit_optional = true
@@ -143,7 +143,7 @@ show_error_codes = true
 [tool.pyright]
 reportMissingImports = true
 reportMissingTypeStubs = true
-pythonVersion = "3.11"
+pythonVersion = "3.10"
 
 [tool.deptry]
 extend_exclude = ["examples"]
@@ -155,7 +155,7 @@ make_whitelist = true
 sort_by_size = true
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -194,7 +194,7 @@ source = ["ndimreg"]
 
 [tool.tox]
 skipsdist = true
-env_list = ["3.11", "3.12"]
+env_list = ["3.10", "3.11", "3.12"]
 
 [tool.tox.env_run_base]
 passenv = ["PYTHON_VERSION"]
