@@ -14,7 +14,7 @@ from array_api_compat import get_namespace
 from loguru import logger
 from matplotlib.patches import Circle
 from numpy.linalg import inv
-from ppft_py import ppft3, rppft3
+from ppftpy import ppft3, rppft3
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor3D

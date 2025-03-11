@@ -13,7 +13,7 @@ from loguru import logger
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from numpy.typing import NDArray
-from ppft_py import ppft2, rppft2
+from ppftpy import ppft2, rppft2
 from scipy import fft
 
 from ndimreg.utils import AutoScipyFftBackend, arr_as_img, fig_to_array, to_numpy_arrays
