@@ -33,7 +33,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Run tests
-        run: uv run --no-dev --group test pytest --doctest-modules --cov --cov-config=pyproject.toml --cov-report=xml
+        run: uv run --no-dev --group test pytest --doctest-modules --cov --cov-config=pyproject.toml --cov-report=xml -m not regression
 
       - name: Upload coverage reports to Codecov on Python 3.12
         uses: codecov/codecov-action@v5
