@@ -3,8 +3,6 @@
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ndimreg)](https://github.com/jnk22/ndimreg/blob/main/pyproject.toml)
 [![PyPI - Implementation](https://img.shields.io/pypi/implementation/ndimreg)](https://github.com/jnk22/ndimreg/blob/main/pyproject.toml)
 [![ci](https://github.com/jnk22/ndimreg/actions/workflows/ci.yml/badge.svg)](https://github.com/jnk22/ndimreg/actions/workflows/ci.yml)
-[![ReadtheDocs](https://readthedocs.org/projects/ndimreg/badge/?version=latest)](https://ndimreg.readthedocs.io)
-[![codecov](https://codecov.io/github/jnk22/ndimreg/graph/badge.svg?token=5EJL318F1D)](https://codecov.io/github/jnk22/ndimreg)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![PyPI - License](https://img.shields.io/pypi/l/ndimreg)](https://github.com/jnk22/ndimreg/blob/main/LICENSE)
