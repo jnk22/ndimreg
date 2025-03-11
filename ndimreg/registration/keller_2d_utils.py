@@ -41,29 +41,29 @@ def _resolve_rotation(
     highpass_filter: bool,
     is_complex: bool = False,
     apply_fft: bool = False,
-) -> Any:
+) -> float:
     images = (im if i == 0 else xp.flip(im, axis=-1) for i, im in enumerate(images))
-    rsi = __generate_radial_sampling_intervals(n, xp=xp)
-    mask = __generate_mask(n, xp=xp) if highpass_filter else False
 
     if apply_fft:
         images = (fft.rfft(im, axis=0) for im in images)
 
-    ppft_func, idx = (ppft2, n) if is_complex or apply_fft else (rppft2, 0)
+    mask = __generate_mask(n, xp=xp) if highpass_filter else False
+    ppft, idx = (ppft2, n) if is_complex or apply_fft else (rppft2, 0)
     ppft_kwargs = {"vectorized": vectorized, "scipy_fft": True}
 
-    merged = (
+    # TODO: Remove merging sectors (see Keller3DRegistration).
+    magnitudes = (
         __merge_sectors(
-            xp.where(mask, xp.nan, xp.abs(ppft_func(im, **ppft_kwargs)[:, :, idx:])),
-            xp=xp,
+            xp.where(mask, xp.nan, xp.abs(ppft(im, **ppft_kwargs)[:, :, idx:])), xp=xp
         )
         for im in images
     )
 
     delta_m_func = __delta_m_normalized if normalized else __delta_m_default
+    rsi = __generate_radial_sampling_intervals(n, xp=xp)
 
     with AutoScipyFftBackend(xp):
-        delta_m = delta_m_func(*merged, xp=xp, rsi=rsi)
+        delta_m = delta_m_func(*magnitudes, xp=xp, rsi=rsi)
 
     omega = xp.atleast_2d(delta_m[..., :n] + delta_m[..., n:])
     min_omega = omega[xp.unravel_index(xp.argmin(omega), omega.shape)[0]]
@@ -86,18 +86,18 @@ def _resolve_rotation(
 
 
 @functools.lru_cache
+def __generate_mask(n: int, *, xp: ModuleType) -> NDArray:
+    rsi = __generate_radial_sampling_intervals(n, xp=xp)
+
+    return (xp.arange(n + 1) * rsi[:, None] > n).T
+
+
+@functools.lru_cache
 def __generate_radial_sampling_intervals(n: int, xp: ModuleType) -> NDArray:
     rsi = xp.sqrt(4 * ((xp.arange(n // 2 + 1) / n) ** 2) + 1)
 
     # And return combined as [1.41, ..., 1, ..., 1.41].
     return xp.stack((*rsi[:0:-1], *rsi))
-
-
-@functools.lru_cache
-def __generate_mask(n: int, *, xp: ModuleType) -> NDArray:
-    rsi = __generate_radial_sampling_intervals(n, xp=xp)
-
-    return (xp.arange(n + 1) * rsi[:, None] > n).T
 
 
 def __merge_sectors(m: NDArray, *, xp: ModuleType) -> NDArray:
