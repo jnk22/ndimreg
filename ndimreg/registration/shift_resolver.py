@@ -64,12 +64,12 @@ def resolve_shift(
     msg = f"Shift errors: 1) {result_rot.error:.2f}, 2) {result_rot_flip.error:.2f}"
     logger.debug(msg)
 
+    if result_rot.error is None or result_rot_flip.error is None:
+        raise ValueError(msg)
+
     if xp.isnan(xp.asarray((result_rot.error, result_rot_flip.error))).any():
         logger.warning("Phase cross correlation returned NaN, returning 0 shifts")
         return False, (0,) * len(fixed.shape), [result_rot, result_rot_flip]
-
-    if result_rot.error is None or result_rot_flip.error is None:
-        raise ValueError(msg)
 
     flip = result_rot_flip.error < result_rot.error
     return (
