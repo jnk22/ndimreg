@@ -143,7 +143,7 @@ ndimreg transform 2d \
 ```text
 Expected: Transformation2D(translation=(12.80, 25.60), rotation=None, scale=None)
 Recovered: Transformation2D(translation=(12.90, 25.70), rotation=None, scale=None)
-Duration: 12.29 ms
+Duration: 11.85 ms
 ```
 
 <details>
@@ -201,7 +201,7 @@ ndimreg transform 2d \
 ```text
 Expected: Transformation2D(translation=(12.80, 25.60), rotation=22.00, scale=None)
 Recovered: Transformation2D(translation=(12.80, 25.70), rotation=22.10, scale=None)
-Duration: 187.90 ms
+Duration: 116.43 ms
 ```
 
 <details>
@@ -259,7 +259,7 @@ ndimreg transform 2d \
 ```text
 Expected: Transformation2D(translation=(12.80, 25.60), rotation=22.00, scale=1.10)
 Recovered: Transformation2D(translation=(13.09, 25.42), rotation=22.01, scale=1.10)
-Duration: 92.09 ms
+Duration: 84.78 ms
 ```
 
 <details>
@@ -314,7 +314,7 @@ ndimreg transform 2d \
 ```text
 Expected: Transformation2D(translation=(12.80, 25.60), rotation=22.00, scale=1.10)
 Recovered: Transformation2D(translation=(13.20, 26.00), rotation=21.09, scale=1.08)
-Duration: 86.50 ms
+Duration: 65.77 ms
 ```
 
 <details>
