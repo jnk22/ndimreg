@@ -54,7 +54,7 @@ def _resolve_rotation(
     # TODO: Remove merging sectors (see Keller3DRegistration).
     magnitudes = (
         __merge_sectors(
-            xp.where(mask, xp.nan, xp.abs(ppft(im, **ppft_kwargs)[:, :, idx:])), xp=xp
+            xp.where(mask, xp.nan, xp.abs(ppft(im, **ppft_kwargs)[..., idx:, :])), xp=xp
         )
         for im in images
     )
