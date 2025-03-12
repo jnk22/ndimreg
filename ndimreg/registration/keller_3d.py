@@ -204,7 +204,7 @@ class Keller3DRegistration(BaseRegistration):
             debug_data = (*tilde_images, moving_rotated)
             debug_names = ("v1-tilde", "v2-tilde", "moving-rerotated")
             debug_images = [
-                *__create_magnitude_debug_images(tuple(magnitudes)),
+                *_create_magnitude_debug_images(tuple(magnitudes)),
                 *self._build_debug_images(debug_data, debug_names),
             ]
         else:
@@ -261,7 +261,7 @@ def _delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
     return xp.nansum(xp.abs(m1 - m2) * rsi, axis=1)
 
 
-def __create_magnitude_debug_images(
+def _create_magnitude_debug_images(
     magnitudes: Sequence[NDArray],
 ) -> list[RegistrationDebugImage]:
     # TODO: Add angles to x/y.

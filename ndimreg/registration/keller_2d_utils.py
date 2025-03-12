@@ -16,13 +16,16 @@ from numpy.typing import NDArray
 from ppftpy import ppft2, rppft2
 from scipy import fft
 
-from ndimreg.utils import AutoScipyFftBackend, arr_as_img, fig_to_array, to_numpy_arrays
+from ndimreg.utils import AutoScipyFftBackend, fig_to_array
+from ndimreg.utils.arrays import to_numpy_array
 
 from .result import RegistrationDebugImage
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable
     from types import ModuleType
+
+    from matplotlib.scale import ScaleBase
 
 
 DType = TypeVar("DType", bound=np.generic)
@@ -39,9 +42,10 @@ def _resolve_rotation(
     normalized: bool,
     optimized: bool,
     highpass_filter: bool,
+    debug: bool,
     is_complex: bool = False,
     apply_fft: bool = False,
-) -> float:
+) -> tuple[float, list[RegistrationDebugImage] | None]:
     images = (im if i == 0 else xp.flip(im, axis=-1) for i, im in enumerate(images))
 
     if apply_fft:
@@ -70,18 +74,17 @@ def _resolve_rotation(
     index_func = __index_optimized if optimized else __index_default
     omega_min_index = index_func(min_omega)
 
-    return __omega_index_to_angle(omega_min_index, n)
+    # TODO: Integrate output for normalized and non-normalized version.
+    if debug:
+        debug_images = [
+            *__omega_index_optimized_debug(to_numpy_array(min_omega)),
+            *__omega_index_array_debug_wrapper(to_numpy_array(min_omega)),
+            *__debug_omega_plots(to_numpy_array(omega)),
+        ]
+    else:
+        debug_images = None
 
-    # TODO: Integrate debug output.
-    # if self.debug:
-    #     debug_images = [
-    #         *self.__debug_output(*merged),
-    #         *_omega_index_optimized_debug(to_numpy_array(omega)),
-    #         *_omega_index_array_debug_wrapper(to_numpy_array(omega)),
-    #         RegistrationDebugImage(moving_rotated, "re-rotated-moving", dim=2),
-    #     ]
-    # else:
-    #     debug_images = None
+    return __omega_index_to_angle(omega_min_index, n), debug_images
 
 
 @functools.lru_cache
@@ -347,6 +350,10 @@ def __omega_index_array_debug(
 def __debug_omega_plots(omega_layers: NDArray) -> list[RegistrationDebugImage]:
     n = len(omega_layers[0])
 
+    if len(omega_layers) == 1:
+        # Only one omega layer exists for 2D registrations.
+        return [__debug_plot(omega_layers[0], n)]
+
     norm = omega_layers / np.linalg.norm(omega_layers, axis=1, keepdims=True)
     omega_layers_norm = norm * (1 / norm.max())
 
@@ -362,18 +369,25 @@ def __debug_omega_plots(omega_layers: NDArray) -> list[RegistrationDebugImage]:
         __debug_plot(omega_layers_norm.T, n, "Normalized"),
         __debug_plot(omega_layers_norm.sum(0), n, "Normalized Sum"),
         __debug_plot(omega_layers[min_val_index], n, "Minimum Value"),
+        __debug_plot(omega_layers[0], n, "First Layer"),
         __debug_plot(omega_layers[n // 2], n, "Middle Layer"),
         __debug_plot(omega_layers.sum(0), n, "Overall Sum"),
-        __debug_plot(omega_layers[max_diff_index], n, "Max Difference"),
+        __debug_plot(omega_layers[max_diff_index], n, "Maximum Difference"),
     ]
 
 
 def __debug_plot(
-    omega_layers: NDArray, n: int, name: str, *, yscale: str | ScaleBase = "linear"
+    omega_layers: NDArray,
+    n: int,
+    name: str | None = None,
+    *,
+    yscale: str | ScaleBase = "linear",
 ) -> RegistrationDebugImage:
+    suffix = f" ({name})" if name else ""
+
     plt.figure()
     plt.plot(omega_layers)
-    plt.title(f"Angular Difference Function ({name})")
+    plt.title(f"Angular Difference Function{suffix}")
     plt.xlabel(r"$\theta$")
     plt.xticks([0, n - 1], ["0", r"$\pi / 2$"])
     plt.yscale(yscale)
@@ -388,77 +402,5 @@ def __debug_plot(
             label="Minimum Value",
         )
 
-    image_name = f"adf-function-{'-'.join(name.lower().split(' '))}"
-    return RegistrationDebugImage(fig_to_array(), image_name, dim=2, copy=False)
-
-
-def __debug_output(m1: NDArray, m2: NDArray) -> list[RegistrationDebugImage]:
-    m1, m2 = to_numpy_arrays(m1, m2)
-
-    m_images_data = (np.log1p(np.ma.array(m, mask=np.isnan(m))) for m in (m1, m2))
-    m_images = (arr_as_img(m[:, ::-1].T, cmap="viridis") for m in m_images_data)
-    debug_images = __build_debug_images(tuple(m_images), prefix="m-", dim=2)
-
-    n = len(m1) - 1
-    plot_settings = ((True, False), ("--", "-"), ("blue", "green"))
-    delta_ms = [
-        (_calculate_delta_m(m1, m2, normalization=norm, xp=np), norm, linestyle, color)
-        for norm, linestyle, color in zip(*plot_settings, strict=True)
-    ]
-    omegas = [(_calculate_omega(dm), norm, ls, c) for dm, norm, ls, c in delta_ms]
-
-    config_df = ("Difference Function", [0, n], [0, r"$\pi$"])
-    for dm_input in [(delta_ms[0],), (delta_ms[1],), delta_ms]:
-        for delta_m, norm, linestyle, color in dm_input:
-            label = rf"$\Delta M{'_{N}' if norm else ''}(\theta)$"
-            plt.plot(delta_m, label=label, linestyle=linestyle, color=color)
-
-        suffix = "-combined" if len(dm_input) > 1 else f"-norm={dm_input[0][1]}"
-        image_name = f"delta-m{suffix}"
-        debug_images.append(__build_debug_plot(*config_df, image_name))
-
-    config_adf = ("Angular Difference Function", [0, n // 2], [0, r"$\pi / 2$"])
-    for o_input in [(omegas[0],), (omegas[1],), omegas]:
-        for delta_m, norm, linestyle, color in o_input:
-            label = rf"$ADF{'_{N}' if norm else ''}(\theta)$"
-            plt.plot(delta_m, label=label, linestyle=linestyle, color=color)
-
-        suffix = "-combined" if len(o_input) > 1 else f"-norm={o_input[0][1]}"
-        image_name = f"adf-function{suffix}"
-        debug_images.append(__build_debug_plot(*config_adf, image_name))
-
-    return debug_images
-
-
-def __build_debug_images(
-    images: Sequence[NDArray],
-    names: Sequence[str] = ("fixed", "moving"),
-    *,
-    dim: Literal[2, 3],
-    prefix: str = "",
-    suffix: str = "",
-    copy: bool = True,
-) -> list[RegistrationDebugImage]:
-    xp = get_namespace(*images)
-    images_corrected = (
-        xp.fft.fftshift(xp.log1p(xp.abs(im))) if xp.iscomplexobj(im) else im
-        for im in images
-    )
-
-    return [
-        RegistrationDebugImage(data, f"{prefix}{name}{suffix}", dim=dim, copy=copy)
-        for name, data in zip(names, images_corrected, strict=True)
-    ]
-
-
-def __build_debug_plot(
-    title: str, ticks: list, labels: list, image_name: str
-) -> RegistrationDebugImage:
-    plt.title(title)
-    plt.xlabel(r"$\theta$")
-    plt.xticks(ticks, labels)
-    plt.margins(0)
-    plt.legend()
-    plt.tight_layout()
-
+    image_name = f"adf-function-{'-'.join((name or 'undefined').lower().split(' '))}"
     return RegistrationDebugImage(fig_to_array(), image_name, dim=2, copy=False)

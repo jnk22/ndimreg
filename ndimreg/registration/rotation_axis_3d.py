@@ -14,7 +14,7 @@ from ndimreg.transform import AXIS_MAPPING, Transformation3D, rotate_axis
 
 from .base import BaseRegistration
 from .keller_2d_utils import _resolve_rotation
-from .result import ResultInternal3D
+from .result import RegistrationDebugImage, ResultInternal3D
 from .shift_resolver import resolve_shift
 from .translation_fft_3d import TranslationFFT3DRegistration
 
@@ -82,7 +82,7 @@ class RotationAxis3DRegistration(BaseRegistration):
         images = (fixed, moving)
         xp = get_namespace(*images)
 
-        rotation = _resolve_rotation(
+        rotation, debug_images = _resolve_rotation(
             (xp.moveaxis(im, SRC, DEST[self.__rotation_axis]) for im in images),
             n=len(fixed),
             xp=xp,
@@ -91,6 +91,7 @@ class RotationAxis3DRegistration(BaseRegistration):
             optimized=self.__rotation_optimization,
             highpass_filter=self.__highpass_filter,
             apply_fft=True,
+            debug=self.debug,
         )
 
         moving_rotated = rotate_axis(
@@ -104,6 +105,11 @@ class RotationAxis3DRegistration(BaseRegistration):
             interpolation_order=self._transform_interpolation_order,
         )
 
+        if self.debug and debug_images:
+            debug_images.append(
+                RegistrationDebugImage(moving_rotated, "re-rotated-moving", dim=3)
+            )
+
         axes = SHIFT_AXES[self.__rotation_axis]
         flip_rotation, shift, shift_results = resolve_shift(
             fixed, moving_rotated, self.__shift_registration, axes=axes
@@ -116,4 +122,6 @@ class RotationAxis3DRegistration(BaseRegistration):
 
         # TODO: Re-integrate debug output.
         tform = Transformation3D(translation=shift, rotation=tuple(angles.tolist()))
-        return ResultInternal3D(tform, sub_results=shift_results, debug_images=None)
+        return ResultInternal3D(
+            tform, sub_results=shift_results, debug_images=debug_images
+        )

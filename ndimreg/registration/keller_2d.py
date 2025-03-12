@@ -13,7 +13,7 @@ from ndimreg.transform import Transformation2D
 
 from .base import BaseRegistration
 from .keller_2d_utils import _resolve_rotation
-from .result import ResultInternal2D
+from .result import RegistrationDebugImage, ResultInternal2D
 from .shift_resolver import resolve_shift
 from .translation_fft_2d import TranslationFFT2DRegistration
 
@@ -121,7 +121,7 @@ class Keller2DRegistration(BaseRegistration):
         images = (fixed, moving)
         xp = get_namespace(*images)
 
-        rotation = _resolve_rotation(
+        rotation, debug_images = _resolve_rotation(
             images,
             n=len(fixed),
             xp=xp,
@@ -130,9 +130,15 @@ class Keller2DRegistration(BaseRegistration):
             optimized=self.__rotation_optimization,
             highpass_filter=self.__highpass_filter,
             is_complex=any(xp.iscomplexobj(im) for im in images),
+            debug=self.debug,
         )
 
         moving_rotated = self._transform(moving, rotation=rotation, degrees=False)
+
+        if self.debug and debug_images:
+            debug_images.append(
+                RegistrationDebugImage(moving_rotated, "re-rotated-moving", dim=2)
+            )
 
         flip_rotation, shift, shift_results = resolve_shift(
             fixed, moving_rotated, self.__shift_registration
@@ -141,4 +147,6 @@ class Keller2DRegistration(BaseRegistration):
 
         # TODO: Re-integrate debug output.
         tform = Transformation2D(translation=shift, rotation=np.rad2deg(-rotation))
-        return ResultInternal2D(tform, sub_results=shift_results, debug_images=None)
+        return ResultInternal2D(
+            tform, sub_results=shift_results, debug_images=debug_images
+        )
