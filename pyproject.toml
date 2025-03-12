@@ -43,6 +43,7 @@ dependencies = [
   "cachetools>=5.5.0",
   "py-cpuinfo>=9.0.0",
   "typing-extensions>=4.12.2",
+  "ppft-py>=0.1.0",
 ]
 
 [project.optional-dependencies]

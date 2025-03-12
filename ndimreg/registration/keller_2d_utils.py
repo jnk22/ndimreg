@@ -4,153 +4,157 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import TYPE_CHECKING, Annotated, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar, overload
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytransform3d.rotations as pr
 from array_api_compat import get_namespace
 from loguru import logger
+from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from numpy.typing import NDArray
+from ppftpy import ppft2, rppft2
+from scipy import fft
 
-from ndimreg.utils import fig_to_array
+from ndimreg.utils import AutoScipyFftBackend, fig_to_array
+from ndimreg.utils.arrays import to_numpy_array
 
 from .result import RegistrationDebugImage
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from types import ModuleType
+
+    from matplotlib.scale import ScaleBase
+
 
 DType = TypeVar("DType", bound=np.generic)
 DeltaMArray = Annotated[NDArray[DType], Literal["N"]]
 OmegaArray = Annotated[NDArray[DType], Literal["N"]]
 
 
-def omega_index(omega: OmegaArray) -> int:
-    """TODO."""
-    return get_namespace(omega).argmin(omega).item()
+def _resolve_rotation(
+    images: Iterable[NDArray],
+    *,
+    n: int,
+    xp: ModuleType,
+    vectorized: bool,
+    normalized: bool,
+    optimized: bool,
+    highpass_filter: bool,
+    debug: bool,
+    is_complex: bool = False,
+    apply_fft: bool = False,
+) -> tuple[float, list[RegistrationDebugImage] | None]:
+    images = (im if i == 0 else xp.flip(im, axis=-1) for i, im in enumerate(images))
 
+    if apply_fft:
+        images = (fft.rfft(im, axis=0) for im in images)
 
-@overload
-def omega_index_to_angle(index: float, n: int) -> float: ...
+    mask = __generate_mask(n, xp=xp) if highpass_filter else False
+    ppft, idx = (ppft2, n) if is_complex or apply_fft else (rppft2, 0)
+    ppft_kwargs = {"vectorized": vectorized, "scipy_fft": True}
 
+    magnitudes = (
+        __merge_sectors(
+            xp.where(mask, xp.nan, xp.abs(ppft(im, **ppft_kwargs)[..., idx:, :])), xp=xp
+        )
+        for im in images
+    )
 
-@overload
-def omega_index_to_angle(index: NDArray, n: int) -> NDArray: ...
+    delta_m_func = __delta_m_normalized if normalized else __delta_m_default
+    rsi = __generate_radial_sampling_intervals(n, xp=xp)
 
+    with AutoScipyFftBackend(xp):
+        delta_m = delta_m_func(*magnitudes, xp=xp, rsi=rsi)
 
-def omega_index_to_angle(index: float | NDArray, n: int) -> float | NDArray:
-    """Convert an index to an angle based on the size of `n`.
+    omega = xp.atleast_2d(delta_m[..., :n] + delta_m[..., n:])
+    min_omega = omega[xp.unravel_index(xp.argmin(omega), omega.shape)[0]]
 
-    Parameters
-    ----------
-    index:
-        A float or a numpy array of floats representing the index.
-    n:
-        An integer representing the size.
+    index_func = __index_optimized if optimized else __index_default
+    omega_min_index = index_func(min_omega)
 
-    Returns
-    -------
-    float | NDArray
-        The angle as a float if `index` is a float, or a numpy array of
-        floats if `index` is an NDArray.
-    """
-    return 2 * np.arctan2(2 * (index - n // 2), n)
+    if debug:
+        debug_images = [
+            *__omega_index_optimized_debug(to_numpy_array(min_omega)),
+            *__omega_index_array_debug_wrapper(to_numpy_array(min_omega)),
+            *__debug_omega_plots(to_numpy_array(omega)),
+        ]
+    else:
+        debug_images = None
 
-
-def merge_sectors(
-    m: NDArray, n: int, *, mask: NDArray | bool, xp: ModuleType
-) -> NDArray:
-    """TODO."""
-    # Using a mask for exluding points from a ray that exceed the
-    # radial limit is supposed to remove high-frequency values.
-    # Slicing the data starting from 'n' cuts off the mirrored data that
-    # exists due to the Fourier Transform (PPFT2D).
-    m1 = xp.where(mask, xp.nan, m[0, n:])
-    m2 = xp.where(mask, xp.nan, m[1, n:])
-
-    return xp.hstack((m1, m2[:, -2:0:-1])).T
-
-
-def calculate_omega(delta_m: DeltaMArray) -> OmegaArray:
-    """TODO."""
-    n = len(delta_m) // 2
-    return delta_m[:n] + delta_m[n:]
-
-
-def calculate_delta_m(
-    m1: NDArray, m2: NDArray, *, normalization: bool, xp: ModuleType
-) -> DeltaMArray:
-    """TODO."""
-    return (
-        __calculate_delta_m_normalized if normalization else __calculate_delta_m_default
-    )(m1, m2, xp=xp)
+    return __omega_index_to_angle(omega_min_index, n), debug_images
 
 
 @functools.lru_cache
-def highpass_filter_mask(n: int) -> NDArray:
-    """TODO."""
-    return (np.arange(n + 1) * __generate_radial_sampling_intervals(n)[:, None] > n).T
+def __generate_mask(n: int, *, xp: ModuleType) -> NDArray:
+    rsi = __generate_radial_sampling_intervals(n, xp=xp)
+
+    return (xp.arange(n + 1) * rsi[:, None] > n).T
 
 
-def __calculate_delta_m_default(
-    m1: NDArray, m2: NDArray, *, xp: ModuleType
+@functools.lru_cache
+def __generate_radial_sampling_intervals(n: int, xp: ModuleType) -> NDArray:
+    rsi = xp.sqrt(4 * ((xp.arange(n // 2 + 1) / n) ** 2) + 1)
+
+    # And return combined as [1.41, ..., 1, ..., 1.41].
+    return xp.stack((*rsi[:0:-1], *rsi))
+
+
+def __merge_sectors(m: NDArray, *, xp: ModuleType) -> NDArray:
+    merged = xp.concatenate((m[..., 0, :, :], m[..., 1, :, -2:0:-1]), axis=-1)
+
+    return xp.moveaxis(merged, -1, -2)
+
+
+def __delta_m_default(
+    m1: NDArray, m2: NDArray, *, xp: ModuleType, rsi: NDArray
 ) -> DeltaMArray:
-    n = len(m1[0]) - 1
-    rsi = __generate_radial_sampling_intervals(n)
-
     # We combine multiple radial sampling intervals as
     # [1.41, ..., 1, ..., 1.41, ..., 1, ..., 1.41) for all angles.
     # Note the last element being excluded as its respective value is
     # equivalent to the first element in the array.
     rsi_combined = xp.hstack((rsi, rsi[1:-1]))
 
-    return xp.nansum(xp.abs(m1 - m2) * rsi_combined[:, None], axis=1)
+    return xp.nansum(xp.abs(m1 - m2) * rsi_combined[:, None], axis=-1)
 
 
-def __calculate_delta_m_normalized(
-    m1: NDArray, m2: NDArray, *, xp: ModuleType
+def __delta_m_normalized(
+    m1: NDArray, m2: NDArray, *, xp: ModuleType, **_kwargs: Any
 ) -> DeltaMArray:
-    counts_1 = xp.sum(~xp.isnan(m1), axis=1)
-    counts_2 = xp.sum(~xp.isnan(m2), axis=1)
-    mean_1 = m1 - xp.nanmean(m1, axis=1, keepdims=True)
-    mean_2 = m2 - xp.nanmean(m2, axis=1, keepdims=True)
-    std_1 = xp.sqrt((1 / counts_1) * xp.nansum((m1 - mean_1) ** 2, axis=1))
-    std_2 = xp.sqrt((1 / counts_2) * xp.nansum((m2 - mean_2) ** 2, axis=1))
+    counts_1 = xp.sum(~xp.isnan(m1), axis=-1)
+    counts_2 = xp.sum(~xp.isnan(m2), axis=-1)
+    mean_1 = m1 - xp.nanmean(m1, axis=-1, keepdims=True)
+    mean_2 = m2 - xp.nanmean(m2, axis=-1, keepdims=True)
+    std_1 = xp.sqrt((1 / counts_1) * xp.nansum((m1 - mean_1) ** 2, axis=-1))
+    std_2 = xp.sqrt((1 / counts_2) * xp.nansum((m2 - mean_2) ** 2, axis=-1))
 
-    return xp.nansum((mean_1 - mean_2) ** 2, axis=1) / (std_1 * std_2)
-
-
-@functools.lru_cache
-def __generate_radial_sampling_intervals(n: int) -> NDArray:
-    # Create the radial sampling intervals in ascending order: [1, ..., 1.41]
-    rsi = np.sqrt(4 * ((np.arange(n // 2 + 1) / n) ** 2) + 1)
-
-    # And return combined as [1.41, ..., 1, ..., 1.41].
-    return np.array((*rsi[:0:-1], *rsi))
+    return xp.nansum((mean_1 - mean_2) ** 2, axis=-1) / (std_1 * std_2)
 
 
 def __omega_indices(omega: OmegaArray) -> tuple[int, int, int]:
-    """TODO."""
     n = len(omega)
-    min_index = omega_index(omega)
+    min_index = __index_default(omega)
     return (min_index - 1) % n, min_index, (min_index + 1) % n
 
 
-def omega_index_optimized(omega: OmegaArray) -> float:
-    """Optimizes the angle corresponding to the minimum value of the omega array.
+def __index_default(omega: OmegaArray) -> int:
+    return get_namespace(omega).argmin(omega).item()
 
-    Arguments:
-    ---------
-    omega
-        Array of omega values.
 
-    Returns:
-    -------
-    float
-        A float representing the optimized index in the omega array
-        after local adjustment.
-    """
+@overload
+def __omega_index_to_angle(index: float, n: int) -> float: ...
+
+
+@overload
+def __omega_index_to_angle(index: NDArray, n: int) -> NDArray: ...
+
+
+def __omega_index_to_angle(index: float | NDArray, n: int) -> float | NDArray:
+    return 2 * np.arctan2(2 * (index - n // 2), n)
+
+
+def __index_optimized(omega: OmegaArray) -> float:
     left_index, min_index, right_index = __omega_indices(omega)
     left_neigh, right_neigh = omega[(left_index, right_index),]
 
@@ -173,19 +177,7 @@ def omega_index_optimized(omega: OmegaArray) -> float:
     return min_index + peak_move
 
 
-def omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugImage]:
-    """Create debug output for optimized omega index.
-
-    Arguments:
-    ---------
-    omega:
-        Array of omega values.
-
-    Returns:
-    -------
-    RegistrationDebugImage
-        A debug image showing the omega peak optimization.
-    """
+def __omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugImage]:
     left_index, min_index, right_index = __omega_indices(omega)
     left_neigh, right_neigh = omega[(left_index, right_index),]
     min_neigh, max_neigh = sorted((left_neigh, right_neigh))
@@ -207,8 +199,8 @@ def omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugImag
     peak_move = sign * (1 - min_neigh / max_neigh) * 0.5
 
     n = len(omega)
-    minimum_angle = omega_index_to_angle(min_index, n)
-    optimized_angle = omega_index_to_angle(min_index + peak_move, n)
+    minimum_angle = __omega_index_to_angle(min_index, n)
+    optimized_angle = __omega_index_to_angle(min_index + peak_move, n)
     optimized_shift = -np.rad2deg(minimum_angle - optimized_angle)
 
     coordinates = (-2, -1, 0, 1, 2)
@@ -219,7 +211,7 @@ def omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugImag
     ]
     labels = ["Left", "Left-Limit", "Minimum", "Right-Limit", "Right"]
     indices = np.linspace(min_index - 1, min_index + 1, 5)
-    angles = omega_index_to_angle(indices, n)
+    angles = __omega_index_to_angle(indices, n)
     tick_labels = [
         f"{la}\n{dg:.2f}°" for la, dg in zip(labels, np.rad2deg(angles), strict=True)
     ]
@@ -267,14 +259,13 @@ def omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugImag
     return [im1, im2]
 
 
-def omega_index_array_debug_wrapper(omega: NDArray) -> list[RegistrationDebugImage]:
-    """TODO."""
+def __omega_index_array_debug_wrapper(omega: NDArray) -> list[RegistrationDebugImage]:
     n = len(omega)
     min_indices = np.array(__omega_indices(omega))
     min_excerpt = omega[min_indices]
 
     return [
-        __omega_index_array_debug(omega, np.arange(n), n, "omega-array"),
+        __omega_index_array_debug(omega, np.arange(n), n, "omega-array-full"),
         __omega_index_array_debug(min_excerpt, min_indices, n, "omega-array-excerpt"),
     ]
 
@@ -282,8 +273,7 @@ def omega_index_array_debug_wrapper(omega: NDArray) -> list[RegistrationDebugIma
 def __omega_index_array_debug(
     omega: NDArray, omega_indices: NDArray, n: int, name: str
 ) -> RegistrationDebugImage:
-    """TODO."""
-    angles = np.array([omega_index_to_angle(x, n) for x in omega_indices])
+    angles = np.array([__omega_index_to_angle(x, n) for x in omega_indices])
     angles_flip = angles + np.pi
     angles, angles_flip = (np.rad2deg(pr.norm_angle(x)) for x in (angles, angles_flip))
     left_index, min_index, right_index = __omega_indices(omega)
@@ -336,14 +326,7 @@ def __omega_index_array_debug(
     # Add arrows on left and right side to indicate circular array.
     # We use dotted lines if we only show an excerpt that does not
     # represent the whole omega array.
-    arrow_props = {
-        "arrowstyle": "<-",
-        "linestyle": "dotted"
-        if omega_indices[0] != 0 or omega_indices[-1] != n
-        else "solid",
-        "color": "black",
-        "lw": 2,
-    }
+    arrow_props = {"arrowstyle": "<-", "linestyle": "solid", "color": "black", "lw": 2}
     ax.annotate("", xy=(-0.5, 0), xytext=(0, 0), arrowprops=arrow_props)
     ax.annotate("", xy=(n, 0), xytext=(n + 0.5, 0), arrowprops=arrow_props)
 
@@ -354,3 +337,62 @@ def __omega_index_array_debug(
     plt.tight_layout()
 
     return RegistrationDebugImage(fig_to_array(), name, dim=2, copy=False)
+
+
+def __debug_omega_plots(omega_layers: NDArray) -> list[RegistrationDebugImage]:
+    n = len(omega_layers[0])
+
+    if len(omega_layers) == 1:
+        # Only one omega layer exists for 2D registrations.
+        return [__debug_plot(omega_layers[0], n)]
+
+    norm = omega_layers / np.linalg.norm(omega_layers, axis=1, keepdims=True)
+    omega_layers_norm = norm * (1 / norm.max())
+
+    min_val_index = np.unravel_index(np.argmin(omega_layers), omega_layers.shape)[0]
+
+    row_mins = np.min(omega_layers, axis=1)
+    row_maxs = np.max(omega_layers, axis=1)
+    max_diff_index = np.argmax(row_maxs - row_mins)
+
+    return [
+        __debug_plot(omega_layers.T, n, "All"),
+        __debug_plot(omega_layers.T, n, "All Log-Scaled", yscale="log"),
+        __debug_plot(omega_layers_norm.T, n, "Normalized"),
+        __debug_plot(omega_layers_norm.sum(0), n, "Normalized Sum"),
+        __debug_plot(omega_layers[min_val_index], n, "Minimum Value"),
+        __debug_plot(omega_layers[0], n, "First Layer"),
+        __debug_plot(omega_layers[n // 2], n, "Middle Layer"),
+        __debug_plot(omega_layers.sum(0), n, "Overall Sum"),
+        __debug_plot(omega_layers[max_diff_index], n, "Maximum Difference"),
+    ]
+
+
+def __debug_plot(
+    omega_layers: NDArray,
+    n: int,
+    name: str | None = None,
+    *,
+    yscale: str | ScaleBase = "linear",
+) -> RegistrationDebugImage:
+    suffix = f" ({name})" if name else ""
+
+    plt.figure()
+    plt.plot(omega_layers)
+    plt.title(f"Angular Difference Function{suffix}")
+    plt.xlabel(r"$\theta$")
+    plt.xticks([0, n - 1], ["0", r"$\pi / 2$"])
+    plt.yscale(yscale)
+
+    if omega_layers.ndim == 1:
+        # TODO: Add degrees for minimum.
+        plt.axvline(
+            x=omega_layers.argmin().item(),
+            color="red",
+            linestyle="--",
+            linewidth=2,
+            label="Minimum Value",
+        )
+
+    image_name = f"adf-function-{'-'.join((name or 'undefined').lower().split(' '))}"
+    return RegistrationDebugImage(fig_to_array(), image_name, dim=2, copy=False)

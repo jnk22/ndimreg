@@ -1838,6 +1838,7 @@ dependencies = [
     { name = "napari" },
     { name = "numpy" },
     { name = "polars" },
+    { name = "ppft-py" },
     { name = "py-cpuinfo" },
     { name = "pyqt6" },
     { name = "pytransform3d" },
@@ -1919,6 +1920,7 @@ requires-dist = [
     { name = "napari" },
     { name = "numpy" },
     { name = "polars", specifier = ">=1.11.0" },
+    { name = "ppft-py", specifier = ">=0.1.0" },
     { name = "py-cpuinfo", specifier = ">=9.0.0" },
     { name = "pyfftw", marker = "extra == 'pyfftw'", specifier = ">=0.15.0" },
     { name = "pyqt6" },
@@ -2266,6 +2268,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c6/77/b3d3e00c696c16cf99af81ef7b1f5fe73bd2a307abca41bd7605429fe6e5/pooch-1.8.2.tar.gz", hash = "sha256:76561f0de68a01da4df6af38e9955c4c9d1a5c90da73f7e40276a5728ec83d10", size = 59353 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/87/77cc11c7a9ea9fd05503def69e3d18605852cd0d4b0d3b8f15bbeb3ef1d1/pooch-1.8.2-py3-none-any.whl", hash = "sha256:3529a57096f7198778a5ceefd5ac3ef0e4d06a6ddaf9fc2d609b806f25302c47", size = 64574 },
+]
+
+[[package]]
+name = "ppft-py"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "array-api-compat" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/c8/30724e3686550c3e157b2fed31a801fe258259258528c7e2c2b4e8ccde14/ppft_py-0.1.0.tar.gz", hash = "sha256:e57b44d8748900c167314b2eb93dca0afacb283884877573230e815f0e3d72d8", size = 5625227 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/6e/021d875da8ffb54a9e6e28dfac7129ed1616c1abe2ee9b8f8a7398018208/ppft_py-0.1.0-py3-none-any.whl", hash = "sha256:e9d43cb3f04654075a8c34eae9f7f1b6d6a26be03b6017e9f00232b447756630", size = 11448 },
 ]
 
 [[package]]
