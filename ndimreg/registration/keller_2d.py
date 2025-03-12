@@ -61,7 +61,7 @@ class Keller2DRegistration(BaseRegistration):
            Vol. 27, No. 6, pp. 969-976, 2005. :DOI:`10.1109/TPAMI.2005.128`
     """
 
-    def __init__(  # noqa: D417, PLR0913
+    def __init__(  # noqa: PLR0913
         self,
         *,
         rotation_normalization: bool = True,

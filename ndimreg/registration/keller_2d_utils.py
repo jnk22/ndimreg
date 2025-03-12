@@ -51,7 +51,6 @@ def _resolve_rotation(
     ppft, idx = (ppft2, n) if is_complex or apply_fft else (rppft2, 0)
     ppft_kwargs = {"vectorized": vectorized, "scipy_fft": True}
 
-    # TODO: Remove merging sectors (see Keller3DRegistration).
     magnitudes = (
         __merge_sectors(
             xp.where(mask, xp.nan, xp.abs(ppft(im, **ppft_kwargs)[..., idx:, :])), xp=xp
