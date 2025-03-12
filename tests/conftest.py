@@ -103,15 +103,6 @@ def timelapse_fused_3d(image_size: int) -> Image3D:
 
 
 @pytest.fixture
-def emc6c0_image_3d(image_size: int) -> Image3D:
-    """Return the 'EM_C_6_c0.tif' test image.
-
-    Source: [clEsperanto/pyclesperanto_prototype](https://github.com/clEsperanto/pyclesperanto_prototype)
-    """
-    return Image3D.from_path(IMAGE_PATH_EMC6C0_3D).resize_to_shape(image_size)
-
-
-@pytest.fixture
 def illumination_image_3d_safe(illumination_image_3d: Image3D) -> Image3D:
     """Return the illumination test image with rotation-safe padding."""
     return illumination_image_3d.pad_safe_rotation(keep_shape=True)
