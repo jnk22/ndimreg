@@ -25,8 +25,6 @@ if TYPE_CHECKING:
 
 # TODO: Optimize edge case handling (wrt. performance).
 # TODO: Rename class (e.g., 'SingleAxisAngle3DRegistration').
-# TODO: Allow input parameter to choose selection (mid layer, minimum, sum, ...).
-# NOTE: Several flips/axis alignments are potentially redundant.
 
 SRC: Final = (0, 1, 2)
 DEST: Final = {0: (0, 1, 2), 1: (1, 2, 0), 2: (2, 0, 1)}
