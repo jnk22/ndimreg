@@ -74,7 +74,6 @@ def _resolve_rotation(
     index_func = __index_optimized if optimized else __index_default
     omega_min_index = index_func(min_omega)
 
-    # TODO: Integrate output for normalized and non-normalized version.
     if debug:
         debug_images = [
             *__omega_index_optimized_debug(to_numpy_array(min_omega)),
@@ -266,7 +265,7 @@ def __omega_index_array_debug_wrapper(omega: NDArray) -> list[RegistrationDebugI
     min_excerpt = omega[min_indices]
 
     return [
-        __omega_index_array_debug(omega, np.arange(n), n, "omega-array"),
+        __omega_index_array_debug(omega, np.arange(n), n, "omega-array-full"),
         __omega_index_array_debug(min_excerpt, min_indices, n, "omega-array-excerpt"),
     ]
 
@@ -327,14 +326,7 @@ def __omega_index_array_debug(
     # Add arrows on left and right side to indicate circular array.
     # We use dotted lines if we only show an excerpt that does not
     # represent the whole omega array.
-    arrow_props = {
-        "arrowstyle": "<-",
-        "linestyle": "dotted"
-        if omega_indices[0] != 0 or omega_indices[-1] != n
-        else "solid",
-        "color": "black",
-        "lw": 2,
-    }
+    arrow_props = {"arrowstyle": "<-", "linestyle": "solid", "color": "black", "lw": 2}
     ax.annotate("", xy=(-0.5, 0), xytext=(0, 0), arrowprops=arrow_props)
     ax.annotate("", xy=(n, 0), xytext=(n + 0.5, 0), arrowprops=arrow_props)
 
