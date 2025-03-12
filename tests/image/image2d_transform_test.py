@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose, assert_array_equal
 
 from tests.test_constants import TEST_IMAGE_SIZE_2D, TEST_IMAGES_2D
 
@@ -40,7 +41,7 @@ def test_image2d_transform_small_interpolation_effect_translation(
     # Due to interpolation it is possible that pixels that
     # are actual zeros become 'close to zero'. We allow this within very
     # a small tolerance.
-    np.testing.assert_allclose(image.data, original_data, atol=1e-15)
+    assert_allclose(image.data, original_data, atol=1e-15)
 
 
 @pytest.mark.parametrize("rotation", [0, 360, 720, -360], ids=lambda x: f"rot={x}")
@@ -59,7 +60,7 @@ def test_image2d_transform_small_interpolation_effect_rotation(
     # Due to interpolation it is possible that pixels that
     # are actual zeros become 'close to zero'. We allow this within very
     # a small tolerance.
-    np.testing.assert_allclose(image.data, original_data, atol=1e-15)
+    assert_allclose(image.data, original_data, atol=1e-15)
 
 
 @pytest.mark.parametrize("inverse", [True, False], ids=lambda x: f"inverse={x}")
@@ -77,7 +78,7 @@ def test_image2d_transform_small_interpolation_effect_scale(
     # Due to interpolation it is possible that pixels that
     # are actual zeros become 'close to zero'. We allow this within very
     # a small tolerance.
-    np.testing.assert_allclose(image.data, original_data, atol=1e-15)
+    assert_allclose(image.data, original_data, atol=1e-15)
 
 
 def test_image2d_transform_indifferent_resize(image: Image2D) -> None:
@@ -88,7 +89,7 @@ def test_image2d_transform_indifferent_resize(image: Image2D) -> None:
 
     assert image.shape == original_shape
     assert original_data is not image.data
-    np.testing.assert_allclose(image.data, original_data, atol=1e-15)
+    assert_allclose(image.data, original_data, atol=1e-15)
 
 
 def test_image2d_transform_indifferent_scale(image: Image2D) -> None:
@@ -99,7 +100,7 @@ def test_image2d_transform_indifferent_scale(image: Image2D) -> None:
 
     assert image.shape == original_shape
     assert original_data is not image.data
-    np.testing.assert_allclose(image.data, original_data, atol=1e-15)
+    assert_allclose(image.data, original_data, atol=1e-15)
 
 
 # NOTE: Tests are currently failing. Definition for scale=0 required.
@@ -110,4 +111,4 @@ def test_image2d_full_zoom_equals_zero_image(image: Image2D) -> None:
     image.transform(scale=0.0)
 
     assert image.shape == original_shape
-    np.testing.assert_equal(image.data, np.zeros(original_shape))
+    assert_array_equal(image.data, np.zeros(original_shape))

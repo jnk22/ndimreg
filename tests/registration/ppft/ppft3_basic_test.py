@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 
 from ndimreg.image import Image3D
 from ndimreg.registration.ppft import ppft3, ppft3_vectorized
@@ -99,9 +100,10 @@ def test_ppft3_sectors_symmetric_data(data: NDArray) -> None:
     # The returned ppft3D has two fourier-transformed sectors,
     # therefore we need to compare both parts.
     assert sec1.shape == sec2.shape == sec3.shape
-    np.testing.assert_allclose(np.flipud(sec1), sec1)
-    np.testing.assert_allclose(np.flipud(sec2), sec2)
-    np.testing.assert_allclose(np.flipud(sec3), sec3)
+
+    assert_allclose(np.flipud(sec1), sec1)
+    assert_allclose(np.flipud(sec2), sec2)
+    assert_allclose(np.flipud(sec3), sec3)
 
 
 def test_ppft3_equals_ppft3_vectorized(data: NDArray) -> None:
@@ -109,7 +111,7 @@ def test_ppft3_equals_ppft3_vectorized(data: NDArray) -> None:
     actual = ppft3(data)
     expected = ppft3_vectorized(data)
 
-    np.testing.assert_allclose(actual, expected)
+    assert_allclose(actual, expected)
 
 
 @pytest.mark.parametrize("dimension", [1, 2, 4, 5])
