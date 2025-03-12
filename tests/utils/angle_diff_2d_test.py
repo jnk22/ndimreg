@@ -4,6 +4,7 @@ import math
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 
 from ndimreg.utils.diffs import angle_diff
 
@@ -45,7 +46,7 @@ def test_angle_diff_array_degrees(
     angle1: float, angle2: float, expected: float
 ) -> None:
     """TODO."""
-    np.testing.assert_allclose(angle_diff(angle1, angle2), expected)
+    assert_allclose(angle_diff(angle1, angle2), expected)
 
 
 # Test for array inputs in radians
@@ -63,7 +64,7 @@ def test_angle_diff_array_radians(
     angle1: float, angle2: float, expected: float
 ) -> None:
     """TODO."""
-    np.testing.assert_allclose(angle_diff(angle1, angle2, degrees=False), expected)
+    assert_allclose(angle_diff(angle1, angle2, degrees=False), expected)
 
 
 # Test for edge cases

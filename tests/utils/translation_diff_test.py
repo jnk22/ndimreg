@@ -1,5 +1,8 @@
+"""TODO."""
+
 import numpy as np
 import pytest
+from numpy.testing import assert_array_equal
 from numpy.typing import NDArray
 
 from ndimreg.utils.diffs import translation_diff
@@ -22,7 +25,7 @@ def test_translation_diff(
 ) -> None:
     """Verify that basic translation differences are calucalted.Calculate."""
     result = translation_diff(translation1, translation2)
-    np.testing.assert_array_equal(result, expected_result)
+    assert_array_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose, assert_array_equal
 
 from ndimreg.image import Image2D
 from ndimreg.registration.ppft import ppft2, ppft2_optimized, ppft2_vectorized
@@ -114,8 +115,8 @@ def test_ppft2_sectors_symmetric_data(ppft2_func: Callable, data: NDArray) -> No
 
     # The returned PPFT2D has two fourier-transformed sectors,
     # therefore we need to compare both parts.
-    np.testing.assert_allclose(np.flipud(result[0]), result[0], atol=1e-14)
-    np.testing.assert_allclose(np.flipud(result[1]), result[1], atol=1e-14)
+    assert_allclose(np.flipud(result[0]), result[0], atol=1e-14)
+    assert_allclose(np.flipud(result[1]), result[1], atol=1e-14)
 
 
 def test_ppft2_equals_rppft2(data: NDArray) -> None:
@@ -125,7 +126,7 @@ def test_ppft2_equals_rppft2(data: NDArray) -> None:
     # Output shape does not contain any symmetric data.
     expected = ppft2(data)[:, len(data) :]
 
-    np.testing.assert_allclose(actual, expected, atol=1e-14)
+    assert_allclose(actual, expected, atol=1e-14)
 
 
 def test_ppft2_equals_rppft2_vectorized(data: NDArray) -> None:
@@ -136,7 +137,7 @@ def test_ppft2_equals_rppft2_vectorized(data: NDArray) -> None:
     actual = rppft2_vectorized(expanded_data)
     expected = np.array([rppft2(d) for d in expanded_data])
 
-    np.testing.assert_equal(actual, expected)
+    assert_array_equal(actual, expected)
 
 
 def test_ppft2_equals_ppft2_vectorized(data: NDArray) -> None:
@@ -147,7 +148,7 @@ def test_ppft2_equals_ppft2_vectorized(data: NDArray) -> None:
     actual = ppft2_vectorized(expanded_data)
     expected = np.array([ppft2(d) for d in expanded_data])
 
-    np.testing.assert_equal(actual, expected)
+    assert_array_equal(actual, expected)
 
 
 def test_rppft2_equals_rppft2_optimized(data: NDArray) -> None:
@@ -155,7 +156,7 @@ def test_rppft2_equals_rppft2_optimized(data: NDArray) -> None:
     actual = rppft2_optimized(data)
     expected = rppft2(data)
 
-    np.testing.assert_equal(actual, expected)
+    assert_array_equal(actual, expected)
 
 
 def test_ppft2_equals_ppft2_optimized(data: NDArray) -> None:
@@ -163,7 +164,7 @@ def test_ppft2_equals_ppft2_optimized(data: NDArray) -> None:
     actual = ppft2_optimized(data)
     expected = ppft2(data)
 
-    np.testing.assert_equal(actual, expected)
+    assert_array_equal(actual, expected)
 
 
 @pytest.mark.parametrize("dimension", [1, 3, 4, 5])

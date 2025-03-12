@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.testing import assert_array_equal
 
 from ndimreg.image import Image2D
 
@@ -13,7 +14,7 @@ def test_image2d_copy_data_remains_equal() -> None:
     assert image.shape == (10, 10)
 
     image_copy = image.copy()
-    np.testing.assert_equal(image_copy.data, image.data)
+    assert_array_equal(image_copy.data, image.data)
     assert image_copy.shape == image.shape
 
 

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose, assert_array_equal
 
 if TYPE_CHECKING:
     from ndimreg.image import Image2D
@@ -17,7 +18,7 @@ def test_image2d_scale_one(homogeneous_image_3x3: Image2D) -> None:
     homogeneous_image_3x3.transform(scale=1.0)
 
     # When zoom factor is 1.0, the image should not change.
-    np.testing.assert_allclose(homogeneous_image_3x3.data, image_data)
+    assert_allclose(homogeneous_image_3x3.data, image_data)
     assert homogeneous_image_3x3.shape == (3, 3)
 
 
@@ -30,7 +31,7 @@ def test_image2d_scale_out_below_third_removes_edges(
     assert homogeneous_image_3x3.shape == (3, 3)
 
     zoomed_out_image = np.array([[0.0, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.0]])
-    np.testing.assert_allclose(homogeneous_image_3x3.data, zoomed_out_image)
+    assert_allclose(homogeneous_image_3x3.data, zoomed_out_image)
 
 
 @pytest.mark.parametrize("factor", [1.01, 1.5, 2.0, 3.0])
@@ -44,7 +45,7 @@ def test_image2d_scale_into_homogenous_image_stays_equal(
     assert homogeneous_image_3x3.shape == (3, 3)
 
     # When zoom factor is above 1.0, the image should not change.
-    np.testing.assert_allclose(homogeneous_image_3x3.data, image_data)
+    assert_allclose(homogeneous_image_3x3.data, image_data)
 
 
 # NOTE: Tests are currently failing. Definition for scale=0 required.
@@ -60,4 +61,4 @@ def test_image2d_scale_zero_maximum_scale_out_removes_content(
     # factor', all image content will be removed and therefore only
     # zeros remain.
     empty_image = np.zeros_like(homogeneous_image_3x3.data)
-    np.testing.assert_equal(homogeneous_image_3x3.data, empty_image)
+    assert_array_equal(homogeneous_image_3x3.data, empty_image)

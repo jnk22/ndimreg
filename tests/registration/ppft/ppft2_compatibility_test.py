@@ -47,8 +47,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 from scipy.io import loadmat
 
 from ndimreg.registration.ppft import ppft2, ppft2_optimized
@@ -65,7 +65,7 @@ def test_ppft2_matlab_compatibility_ppft2_f16_image(ppft2_func: Callable) -> Non
     expected = loadmat(data_path / "f16_ppft2.out.mat")["pp"]
     actual = ppft2_func(loadmat(data_path / "f16_ppft2.in.mat")["im"])
 
-    np.testing.assert_allclose(actual, expected, rtol=1e-11)
+    assert_allclose(actual, expected, rtol=1e-11)
 
 
 # TODO: Read dynamically if possible.
@@ -86,4 +86,4 @@ def test_ppft2_matlab_compatibility_ppft2_random_data(
     expected = loadmat(out_file)["pp"]
     actual = ppft2_func(loadmat(in_file)["im"])
 
-    np.testing.assert_allclose(actual, expected, rtol=1e-12)
+    assert_allclose(actual, expected, rtol=1e-12)

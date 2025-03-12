@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 from scipy.io import loadmat
 
 from ndimreg.registration.ppft import ppft3, ppft3_vectorized
@@ -32,7 +33,7 @@ def test_ppft3_original_example_im2(ppft3_func: Callable) -> None:
     assert result.shape == (3, 13, 5, 5)
 
     assert result[0, 0, 0, 0] == pytest.approx(0.0462 - 0.0099j, rel=1e-3)
-    np.testing.assert_allclose(
+    assert_allclose(
         result[0, :, 0, 0],
         np.array(
             [
@@ -55,7 +56,7 @@ def test_ppft3_original_example_im2(ppft3_func: Callable) -> None:
     )
 
     # TODO: Fix tests (might be due to wrong flipping within PP assignment).
-    np.testing.assert_allclose(
+    assert_allclose(
         result[0, 0, :, 0],
         np.array(
             [
@@ -86,7 +87,7 @@ def test_ppft3_original_example_im2_ones(ppft3_func: Callable) -> None:
     result = ppft3_func(data)
     assert result.shape == (3, 13, 5, 5)
 
-    np.testing.assert_allclose(
+    assert_allclose(
         result[0, :, 0, 0],
         np.array(
             [
@@ -108,7 +109,7 @@ def test_ppft3_original_example_im2_ones(ppft3_func: Callable) -> None:
         rtol=1e-3,
     )
 
-    np.testing.assert_allclose(
+    assert_allclose(
         result[0, 0, :, 0],
         np.array(
             [
@@ -156,4 +157,4 @@ def test_ppft3_matlab_implementation_compatibility_fastppft3(
     expected = loadmat(out_file)["pp2"]
     actual = ppft3_func(loadmat(in_file)["im"])
 
-    np.testing.assert_allclose(actual, expected, rtol=1e-12)
+    assert_allclose(actual, expected, rtol=1e-12)
