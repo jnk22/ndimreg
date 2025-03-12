@@ -54,8 +54,8 @@ class Transformation2D(Transformation):
 class Transformation3D(Transformation):
     """3D transformation input."""
 
-    translation: tuple[float, ...] | None = None
-    rotation: tuple[float, ...] | None = None
+    translation: tuple[float, float, float] | None = None
+    rotation: tuple[float, float, float] | None = None
     scale: float | None = None
 
     @classmethod
