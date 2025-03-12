@@ -145,7 +145,6 @@ class Keller2DRegistration(BaseRegistration):
         )
         rotation += xp.pi * flip_rotation
 
-        # TODO: Re-integrate debug output.
         tform = Transformation2D(translation=shift, rotation=np.rad2deg(-rotation))
         return ResultInternal2D(
             tform, sub_results=shift_results, debug_images=debug_images

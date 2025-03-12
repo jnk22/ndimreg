@@ -120,7 +120,6 @@ class RotationAxis3DRegistration(BaseRegistration):
         rotation_matrix = pr.active_matrix_from_angle(basis, rotation)
         angles = np.rad2deg(pr.intrinsic_euler_xyz_from_active_matrix(rotation_matrix))
 
-        # TODO: Re-integrate debug output.
         tform = Transformation3D(translation=shift, rotation=tuple(angles))
         return ResultInternal3D(
             tform, sub_results=shift_results, debug_images=debug_images
