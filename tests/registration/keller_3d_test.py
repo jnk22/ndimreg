@@ -47,8 +47,8 @@ def test_registration_3d_keller3d_register_with_empty_image(
     registration = Keller3DRegistration(debug=debug)
     result = registration.register(image.data, np.zeros_like(image.data))
 
-    assert result.transformation.translation == (0.0,) * 3
     assert result.transformation.rotation == (0.0,) * 3
+    assert result.transformation.translation == (0.0,) * 3
     assert result.transformation.scale is None  # Scaling is not supported.
 
 
@@ -65,8 +65,8 @@ def test_registration_3d_keller3d_equal_input_images(
 
     result = registration.register(image.data, image.copy().data)
 
-    assert result.transformation.translation == (0.0,) * 3
     assert result.transformation.rotation == (0.0,) * 3
+    assert result.transformation.translation == (0.0,) * 3
     assert result.transformation.scale is None  # Scaling is not supported.
 
 
