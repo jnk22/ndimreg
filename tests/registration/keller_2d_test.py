@@ -58,8 +58,8 @@ def test_registration_2d_keller2d_register_with_empty_image(
     )
     result = registration.register(image.data, np.zeros_like(image.data))
 
-    assert result.transformation.translation == (0.0, 0.0)
     assert result.transformation.rotation == 0
+    assert result.transformation.translation == (0.0, 0.0)
     assert result.transformation.scale is None  # Scaling is not supported.
 
 
@@ -83,8 +83,8 @@ def test_registration_2d_keller2d_equal_input_images(
     )
     result = registration.register(image.data, image.copy().data)
 
-    assert result.transformation.translation == (0.0, 0.0)
     assert result.transformation.rotation == approx_rotation(0)
+    assert result.transformation.translation == (0.0, 0.0)
     assert result.transformation.scale is None  # Scaling is not supported.
 
 
@@ -130,6 +130,6 @@ def test_registration_2d_keller2d_rotation_shift(
 
     # Tested with 64x64 F16 iamge from ADF paper.
 
-    assert result.transformation.translation == shifts
     assert result.transformation.rotation == approx_rotation(rotation, abs=rotation_tol)
+    assert result.transformation.translation == shifts
     assert result.transformation.scale is None  # Scaling is not supported.

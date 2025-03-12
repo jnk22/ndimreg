@@ -64,8 +64,8 @@ def test_registration_3d_rotationaxis3d_register_with_empty_image(
     )
     result = registration.register(image.data, np.zeros_like(image.data))
 
-    assert result.transformation.translation == (0.0, 0.0, 0.0)
     assert result.transformation.rotation == approx_rotation((0.0, 0.0, 0.0))
+    assert result.transformation.translation == (0.0, 0.0, 0.0)
     assert result.transformation.scale is None  # Scaling is not supported.
 
 
@@ -96,12 +96,11 @@ def test_registration_3d_rotationaxis3d_equal_input_images(
     )
     result = registration.register(image.data, image.copy().data)
 
-    assert result.transformation.translation == (0.0, 0.0, 0.0)
     assert result.transformation.rotation == approx_rotation((0.0, 0.0, 0.0))
+    assert result.transformation.translation == (0.0, 0.0, 0.0)
     assert result.transformation.scale is None  # Scaling is not supported.
 
 
-# NOTE: Rotation with angle '5' works worse with normalization enabled.
 @pytest.mark.parametrize("shift_z", TEST_SHIFTS_3D, ids=lambda x: f"tz={x}")
 @pytest.mark.parametrize("shift_y", TEST_SHIFTS_3D, ids=lambda x: f"ty={x}")
 @pytest.mark.parametrize("shift_x", TEST_SHIFTS_3D, ids=lambda x: f"tx={x}")
@@ -148,6 +147,6 @@ def test_registration_3d_rotationaxis3d_rotation_shift(
     rotation_tol = factor * np.rad2deg(np.arctan(1 / image_size))
 
     # TODO: Only validate single axis rotation (and/or quaternion distance).
-    assert result.transformation.translation == shifts  # Shifts are exact here.
     assert result.transformation.rotation == approx_rotation(degrees, abs=rotation_tol)
+    assert result.transformation.translation == shifts  # Shifts are exact here.
     assert result.transformation.scale is None  # Scaling is not supported.

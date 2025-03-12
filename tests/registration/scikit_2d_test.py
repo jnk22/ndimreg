@@ -43,8 +43,8 @@ def test_registration_2d_scikit2d_register_with_empty_image(image: Image2D) -> N
     registration = Scikit2DRegistration()
     result = registration.register(image.data, np.zeros_like(image.data))
 
-    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.rotation == approx_rotation(0)
+    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.scale == pytest.approx(1)
 
 
@@ -57,8 +57,8 @@ def test_registration_2d_scikit2d_equal_input_images(image: Image2D) -> None:
     """
     result = Scikit2DRegistration().register(image.data, image.copy().data)
 
-    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.rotation == approx_rotation(0)
+    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.scale == pytest.approx(1)
 
 
@@ -86,8 +86,8 @@ def test_registration_2d_scikit2d_rotation_shift_scale(
     result = registration.register(image.data, image_transformed.data)
 
     # With scale=1.0, rotation works with abs=1, shifts with abs=1, and scale with 0.01.
-    assert result.transformation.translation == pytest.approx(shifts, abs=3)
     assert result.transformation.rotation == approx_rotation(rotation, abs=1.2)
+    assert result.transformation.translation == pytest.approx(shifts, abs=3)
     assert result.transformation.scale == pytest.approx(scale, abs=0.016)  # 1.6%
 
 
@@ -136,6 +136,6 @@ def test_registration_2d_scikit2d_scikit_image_example() -> None:
     )
     result = registration.register(image.data, image_transformed.data)
 
-    assert result.transformation.translation == shifts
     assert result.transformation.rotation == approx_rotation(rotation, abs=0.1)
+    assert result.transformation.translation == shifts
     assert result.transformation.scale == pytest.approx(scale, abs=0.001)

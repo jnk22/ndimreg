@@ -47,8 +47,8 @@ def test_registration_2d_imregdft2d_register_with_empty_image(image: Image2D) ->
     registration = ImregDft2DRegistration()
     result = registration.register(image.data, np.zeros_like(image.data))
 
-    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.rotation == approx_rotation(0)
+    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.scale == pytest.approx(1)
 
 
@@ -61,8 +61,8 @@ def test_registration_2d_imregdft2d_equal_input_images(image: Image2D) -> None:
     """
     result = ImregDft2DRegistration().register(image.data, image.copy().data)
 
-    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.rotation == approx_rotation(0)
+    assert result.transformation.translation == pytest.approx((0.0,) * 2)
     assert result.transformation.scale == pytest.approx(1)
 
 
@@ -87,6 +87,6 @@ def test_registration_2d_imregdft2d_rotation_shift(
     registration = ImregDft2DRegistration()
     result = registration.register(image.data, image_transformed.data)
 
-    assert euclidean(shifts, result.transformation.translation) <= 0.005 * image_size
     assert result.transformation.rotation == approx_rotation(rotation, abs=0.22)
+    assert euclidean(shifts, result.transformation.translation) <= 0.005 * image_size
     assert result.transformation.scale == pytest.approx(1, abs=0.005)  # 0.5%
