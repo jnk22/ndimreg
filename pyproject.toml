@@ -150,7 +150,7 @@ pythonVersion = "3.10"
 extend_exclude = ["examples"]
 
 [tool.vulture]
-paths = ["ndimreg", "tests"]
+paths = ["src", "tests"]
 min_confidence = 90
 make_whitelist = true
 sort_by_size = true
@@ -178,7 +178,7 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["D104", "F401"]
 "tests/*.py" = ["S101"]
-"ndimreg/cli/*.py" = ["T201"]
+"src/ndimreg/cli/*.py" = ["T201"]
 "examples/*.py" = ["D100", "ERA001", "INP001", "T201"]
 
 [tool.pytest.ini_options]
