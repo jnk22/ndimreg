@@ -59,11 +59,16 @@ def resolve_shift(
         result_rot = registration.register(fixed_fft, moving_fft)
         result_rot_flip = registration.register(fixed_fft, flipped_moving_fft)
 
-    msg = f"Shift errors: 1) {result_rot.error:.2f}, 2) {result_rot_flip.error:.2f}"
-    logger.debug(msg)
-
+    # The translation registration methods must return an error value
+    # to evaluate whether the flipped or non-flipped rotation results
+    # in a better result. As the API theoretically allows for 'None'
+    # values to be returned, we raise an error in that case.
     if result_rot.error is None or result_rot_flip.error is None:
-        raise ValueError(msg)
+        err_msg = "Unexpected None value in translation estimation results"
+        raise ValueError(err_msg)
+
+    log_msg = f"Shift errors: 1) {result_rot.error:.2f}, 2) {result_rot_flip.error:.2f}"
+    logger.debug(log_msg)
 
     if xp.isnan(xp.asarray((result_rot.error, result_rot_flip.error))).any():
         logger.warning("Phase cross correlation returned NaN, returning 0 shifts")
