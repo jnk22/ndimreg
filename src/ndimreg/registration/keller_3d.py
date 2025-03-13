@@ -190,9 +190,11 @@ class Keller3DRegistration(BaseRegistration):
 
         angle_result = self.__rotation_angle_registration.register(*tilde_images)
         z_rot = angle_result.transformation.rotation
-        rot_mat_z_axis = pr.active_matrix_from_intrinsic_euler_xyz(np.deg2rad(z_rot))
+        rot_mat_z_axis = pr.matrix_from_euler(
+            np.deg2rad(z_rot), 0, 1, 2, extrinsic=False
+        )
         matrix = rot_mat_r_tilde @ inv(rot_mat_z_axis) @ inv(rot_mat_r_tilde)
-        angles = np.rad2deg(pr.intrinsic_euler_xyz_from_active_matrix(inv(matrix)))
+        angles = np.rad2deg(pr.euler_from_matrix(inv(matrix), 0, 1, 2, extrinsic=False))
         logger.debug(f"Recovered angles: [{', '.join(f'{x:.2f}' for x in angles)}]")
 
         moving_rotated = self._transform(moving, rotation=matrix)
