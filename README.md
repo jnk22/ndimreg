@@ -4,6 +4,7 @@
 [![Implementation](https://img.shields.io/badge/implementation-cpython-blue)](https://github.com/jnk22/ndimreg/blob/main/pyproject.toml)
 [![PyPI - Version](https://img.shields.io/pypi/v/ndimreg)](https://pypi.org/project/ndimreg)
 [![ci](https://github.com/jnk22/ndimreg/actions/workflows/ci.yml/badge.svg)](https://github.com/jnk22/ndimreg/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jnk22/ppft-py/badge)](https://scorecard.dev/viewer/?uri=github.com/jnk22/ppft-py)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/jnk22/ndimreg/blob/main/LICENSE)
