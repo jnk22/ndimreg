@@ -336,7 +336,7 @@ def __build_rotation_matrix(
         # We also norm the Euler angles just to be sure, this might not
         # be absolutely necessary though.
         euler = pr.norm_euler(np.deg2rad(rotation) if degrees else rotation, 0, 1, 2)
-        matrix = pr.active_matrix_from_intrinsic_euler_xyz(euler)
+        matrix = pr.matrix_from_euler(euler, 0, 1, 2, extrinsic=False)
 
     elif len(rotation) == 4:
         matrix = pr.matrix_from_quaternion(rotation)

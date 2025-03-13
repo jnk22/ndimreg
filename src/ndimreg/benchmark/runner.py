@@ -127,7 +127,7 @@ class BenchmarkRunner:
                 rotation_angle_in, axis=rotation_axis, dim=dim
             )
             rotation_euler_in = tuple(
-                np.rad2deg(pr.intrinsic_euler_xyz_from_active_matrix(rotation))
+                np.rad2deg(pr.euler_from_matrix(rotation, 0, 1, 2, extrinsic=False))
             )
             axis_kwargs = {"axis": rotation_axis}
 
@@ -242,7 +242,7 @@ class BenchmarkRunner:
                 # rotation around a single axis.
                 # TODO: Move this to result class instead.
                 axis_angle = pr.axis_angle_from_matrix(
-                    pr.active_matrix_from_intrinsic_euler_xyz(rotation_euler_out)
+                    pr.matrix_from_euler(rotation_euler_out, 0, 1, 2, extrinsic=False)
                 )
                 axis, angle = axis_angle[:3], axis_angle[3]
                 # TODO: Description.

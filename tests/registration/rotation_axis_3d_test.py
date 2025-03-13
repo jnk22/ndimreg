@@ -141,7 +141,9 @@ def test_registration_3d_rotationaxis3d_rotation_shift(
     # then converted to the output Euler angle convention.
     basis = {0: 0, 1: 2, 2: 1}[AXIS_MAPPING[axis][1]]
     rotation_matrix = pr.active_matrix_from_angle(basis, np.deg2rad(-rotation))
-    degrees = np.rad2deg(pr.intrinsic_euler_xyz_from_active_matrix(rotation_matrix))
+    degrees = np.rad2deg(
+        pr.euler_from_matrix(rotation_matrix, 0, 1, 2, extrinsic=False)
+    )
 
     factor = 1.0 if rotation_normalization else 1.1
     rotation_tol = factor * np.rad2deg(np.arctan(1 / image_size))
