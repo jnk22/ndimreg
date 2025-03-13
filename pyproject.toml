@@ -30,7 +30,7 @@ dependencies = [
   "numpy",
   "scipy<2", # imreg_dft uses deprecated functions which are to be removed in SciPy 2.
   "scikit-image",
-  "pytransform3d",
+  "pytransform3d>=3.8.0", # 'pytransform3d.rotations.norm_euler'
   "imreg-dft",
   "tqdm",
   "matplotlib",
