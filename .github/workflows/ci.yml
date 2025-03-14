@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up the environment
         uses: ./.github/actions/setup-python-env
@@ -36,7 +36,7 @@ jobs:
         run: uv run --no-dev --group test pytest --doctest-modules --cov --cov-config=pyproject.toml --cov-report=xml -m "not regression"
 
       - name: Upload coverage reports to Codecov on Python 3.12
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
         if: ${{ matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
