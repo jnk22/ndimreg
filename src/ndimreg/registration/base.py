@@ -145,11 +145,9 @@ class BaseRegistration(ABC, Registration):
             self.name,
             tform_postprocessed,
             error=result.error,
-            duration={  # type: ignore[reportAssignmentType]
-                interval.name: interval.duration
-                for interval in timer.intervals
-                if interval.name
-            },
+            # Ignore the type warning as we have only used appropriate
+            # interval names for supported duration types.
+            duration={interval.name: interval.duration for interval in timer.intervals},  # type: ignore[reportAssignmentType]
             debug_images=debug_images,
             sub_results=result.sub_results,
         )
