@@ -75,7 +75,7 @@ def random_image_2d_gpu_rgb(image_size: int, cupy_rng: Generator) -> NDArray:
 
 
 @pytest.fixture(params=CPU_DATA)
-def image_data_cpu(request: pytest.FixtureRequest, image_size) -> NDArray:  # noqa: ANN001
+def image_data_cpu(request: pytest.FixtureRequest, image_size: int) -> NDArray:  # noqa: ARG001
     """TODO."""
     return request.getfixturevalue(request.param)
 
