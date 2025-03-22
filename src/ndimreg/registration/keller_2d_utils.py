@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import functools
-import math
 from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar, overload
 
 import numpy as np
@@ -74,14 +73,7 @@ def _resolve_rotation(
     index_func = __index_optimized if optimized else __index_default
     omega_min_index = index_func(min_omega)
 
-    if debug:
-        debug_images = [
-            *__omega_index_optimized_debug(to_numpy_array(min_omega)),
-            *__omega_index_array_debug_wrapper(to_numpy_array(min_omega)),
-            *__debug_omega_plots(to_numpy_array(omega)),
-        ]
-    else:
-        debug_images = None
+    debug_images = __generate_debug_images(omega, min_omega) if debug else None
 
     return __omega_index_to_angle(omega_min_index, n), debug_images
 
@@ -165,19 +157,33 @@ def __index_optimized(omega: OmegaArray) -> float:
         min_neigh, max_neigh = right_neigh, left_neigh
         sign = 1
 
-    effect = np.divide(min_neigh, max_neigh).item()
-
-    if math.isnan(effect) or math.isinf(effect):
+    if max_neigh <= 0:
         logger.warning("Max neighbor value is zero, potential issue with input data")
         return min_index
 
-    peak_move = 0.5 * sign * (1 - effect)
-    logger.debug(f"Shifted omega peak by {peak_move:.4f} at index {min_index}")
+    weight = min_neigh / max_neigh
+    refinement = 0.5 * sign * (1 - weight)
+    optimized_index = min_index + refinement
 
-    return min_index + peak_move
+    logger.debug(f"Refined peak position from index {min_index} to {optimized_index}")
+
+    return optimized_index.item()
 
 
-def __omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugImage]:
+def __generate_debug_images(
+    omega: NDArray, min_omega: NDArray
+) -> list[RegistrationDebugImage]:
+    omega_cpu = to_numpy_array(omega)
+    min_omega_cpu = to_numpy_array(min_omega)
+
+    return [
+        *__debug_omega_optimization(min_omega_cpu),
+        *__debug_omega_arrays(min_omega_cpu),
+        *__debug_omega_difference_functions(omega_cpu),
+    ]
+
+
+def __debug_omega_optimization(omega: OmegaArray) -> list[RegistrationDebugImage]:
     left_index, min_index, right_index = __omega_indices(omega)
     left_neigh, right_neigh = omega[(left_index, right_index),]
     min_neigh, max_neigh = sorted((left_neigh, right_neigh))
@@ -259,18 +265,18 @@ def __omega_index_optimized_debug(omega: OmegaArray) -> list[RegistrationDebugIm
     return [im1, im2]
 
 
-def __omega_index_array_debug_wrapper(omega: NDArray) -> list[RegistrationDebugImage]:
+def __debug_omega_arrays(omega: NDArray) -> list[RegistrationDebugImage]:
     n = len(omega)
     min_indices = np.array(__omega_indices(omega))
     min_excerpt = omega[min_indices]
 
     return [
-        __omega_index_array_debug(omega, np.arange(n), n, "omega-array-full"),
-        __omega_index_array_debug(min_excerpt, min_indices, n, "omega-array-excerpt"),
+        __debug_build_omega_array(omega, np.arange(n), n, "omega-array-full"),
+        __debug_build_omega_array(min_excerpt, min_indices, n, "omega-array-excerpt"),
     ]
 
 
-def __omega_index_array_debug(
+def __debug_build_omega_array(
     omega: NDArray, omega_indices: NDArray, n: int, name: str
 ) -> RegistrationDebugImage:
     angles = np.array([__omega_index_to_angle(x, n) for x in omega_indices])
@@ -339,7 +345,9 @@ def __omega_index_array_debug(
     return RegistrationDebugImage(fig_to_array(), name, dim=2, copy=False)
 
 
-def __debug_omega_plots(omega_layers: NDArray) -> list[RegistrationDebugImage]:
+def __debug_omega_difference_functions(
+    omega_layers: NDArray,
+) -> list[RegistrationDebugImage]:
     n = len(omega_layers[0])
 
     if len(omega_layers) == 1:

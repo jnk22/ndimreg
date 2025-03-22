@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import itertools
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 import matplotlib as mpl
@@ -13,6 +14,7 @@ from array_api_compat import get_namespace
 from loguru import logger
 from matplotlib.patches import Circle
 from numpy.linalg import inv
+from numpy.typing import NDArray
 from ppftpy import ppft3, rppft3
 from typing_extensions import override
 
@@ -31,16 +33,20 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from types import ModuleType
 
-    from numpy.typing import NDArray
+
+Sector = int
+MinimumIndex = NDArray
 
 DEFAULT_DEBUG_CMAP: Final = "rainbow"
 U1: Final = (0.0, 0.0, 1.0)
+OPTIMIZATION_DIRECTIONS: Final = np.array(
+    ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+)
 
 # PERF: Parallelize V1-tilde and V2-tilde transformations.
 # PERF: Parallelize magnitude calculation if not on GPU.
 # PERF: Parallelize debug plot generation (debug only).
 # TODO: Rename class with better name.
-# TODO: Implement 'rotation optimization' shift as in Keller2D.
 # TODO: Test for flipped images by checking 180 degrees flips on all axes.
 
 
@@ -81,7 +87,7 @@ class Keller3DRegistration(BaseRegistration):
         self,
         *,
         rotation_axis_normalization: bool = False,  # NOTE: WIP.
-        rotation_axis_optimization: bool = False,  # NOTE: Not yet implemented.
+        rotation_axis_optimization: bool = True,
         rotation_axis_vectorized: bool = False,
         rotation_angle_normalization: bool = True,
         rotation_angle_optimization: bool = True,
@@ -165,8 +171,8 @@ class Keller3DRegistration(BaseRegistration):
             for im in images
         )
 
-        normalized = self.__rotation_axis_normalization
-        delta_v_func = _delta_v_normalized if normalized else _delta_v_default
+        normalize = self.__rotation_axis_normalization
+        delta_v_func = _delta_v_normalized if normalize else _delta_v_default
 
         with AutoScipyFftBackend(xp):
             if self.debug:
@@ -177,7 +183,15 @@ class Keller3DRegistration(BaseRegistration):
 
         # We build the roation matrix for Z-axis alignment as defined
         # in section '4: Planar rotation'.
-        u2 = _cartesian_from_delta_v(delta_v, xp=xp)
+        index_func = (
+            _index_optimized if self.__rotation_axis_optimization else _index_default
+        )
+        sector, min_index = index_func(delta_v)
+
+        pseudopolar_coords = xp.array(min_index) - n // 2
+        indices = to_numpy_array(-2 * pseudopolar_coords / n)
+        u2 = np.insert(indices, sector, 1)
+
         axis_angle = pr.axis_angle_from_two_directions(U1, u2)
         rot_mat_r_tilde = pr.matrix_from_axis_angle(axis_angle)
 
@@ -206,8 +220,13 @@ class Keller3DRegistration(BaseRegistration):
             debug_data = (*tilde_images, moving_rotated)
             debug_names = ("v1-tilde", "v2-tilde", "moving-rerotated")
             debug_images = [
-                *_create_magnitude_debug_images(tuple(magnitudes)),
-                *self._build_debug_images(debug_data, debug_names),
+                # Magnitudes of PPFT3D output have previously converted
+                # to a tuple.
+                *_debug_images(magnitudes),  # type: ignore[reportArgumentType]
+                *(
+                    RegistrationDebugImage(data, name, dim=3, copy=False)
+                    for name, data in zip(debug_names, debug_data, strict=True)
+                ),
             ]
         else:
             debug_images = None
@@ -216,6 +235,49 @@ class Keller3DRegistration(BaseRegistration):
         return ResultInternal3D(
             tform, sub_results=[angle_result, shift_result], debug_images=debug_images
         )
+
+
+def _index_default(delta_v: NDArray) -> tuple[Sector, MinimumIndex]:
+    xp = get_namespace(delta_v)
+    sector, *min_index = xp.unravel_index(xp.argmin(delta_v), delta_v.shape)
+
+    return sector.item(), to_numpy_array(xp.array(min_index))
+
+
+def _index_optimized(delta_v: NDArray) -> tuple[Sector, MinimumIndex]:
+    # FIX: Handle zero-valued neighbors.
+    # TODO: Implement debug output.
+    # TODO: Handle (e.g., exclude) 'NaN' values for corner indices.
+    # PERF: Access edge/corner neighbors without combining all sectors.
+    # The current method builds a full matrix that consists of all
+    # values to allow for a wrap-around if the minimum index (i,j) is
+    # on the edge (e.g., i=0) or at a corner (e.g., i=j=0). However,
+    # this requires more memory and O(n) time. Direct access reduces
+    # the asymptotic runtime complexity to O(1).
+    sector, min_index = _index_default(delta_v)
+    combined_sectors = _combine_sectors(to_numpy_array(delta_v), sector=sector)
+    row, col = min_index + len(delta_v[0]) // 2
+
+    center_matrix = combined_sectors[row - 1 : row + 2, col - 1 : col + 2]
+    center_value = center_matrix[1, 1]
+
+    mask = np.zeros((3, 3), dtype=bool)
+    mask[1, 1] = True
+    neighbors = np.ma.array(center_matrix, mask=mask).compressed()
+
+    if np.max(neighbors) <= 0:
+        logger.warning("Neighbor values are <= 0, cannot optimize minimum index")
+        return sector, min_index
+
+    weights = (center_value / neighbors) * (1 / 3)
+    directed_weights = weights[:, None] * OPTIMIZATION_DIRECTIONS
+
+    refinement = np.sum(directed_weights, axis=0)
+    optimized_index = min_index + refinement
+
+    logger.debug(f"Refined peak position from index {min_index} to {optimized_index}")
+
+    return sector, optimized_index
 
 
 @functools.lru_cache
@@ -233,15 +295,6 @@ def __generate_radial_sampling_intervals(n: int, *, xp: ModuleType) -> NDArray:
     x = (-2 * (xp.array(tuple(xp.ndindex(target_shape))) - n // 2) / n) ** 2 + 0.5
 
     return xp.sqrt(xp.sum(x, axis=1)).reshape(target_shape)
-
-
-def _cartesian_from_delta_v(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
-    n = len(delta_v[1]) - 1
-    min_index = xp.array(xp.unravel_index(xp.argmin(delta_v), delta_v.shape))
-    sector = min_index[0].item()
-    pseudopolar_coords = min_index[1:] - n // 2
-
-    return np.insert(to_numpy_array(-2 * pseudopolar_coords / n), sector, 1)
 
 
 def _delta_v_normalized(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
@@ -263,44 +316,93 @@ def _delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
     return xp.nansum(xp.abs(m1 - m2) * rsi, axis=1)
 
 
-def _create_magnitude_debug_images(
-    magnitudes: Sequence[NDArray],
-) -> list[RegistrationDebugImage]:
+def _combine_sectors(delta_v: NDArray, sector: int) -> NDArray:
+    k = len(delta_v[0]) // 2
+
+    if sector == 0:
+        mid = delta_v[0]
+        top = delta_v[1, ::-1][k:-1:]
+        bot = delta_v[1, ::-1, ::-1][1 : k + 1]
+        left = np.rot90(delta_v[2, ::-1, ::-1])[:, k:-1]
+        right = np.rot90(delta_v[2, ::-1])[:, 1 : k + 1]
+
+    elif sector == 1:
+        mid = delta_v[1]
+        left = delta_v[2, ::, ::-1][:, k:-1]
+        right = delta_v[2, ::-1, ::-1][:, 1 : k + 1]
+        top = delta_v[0, ::-1][k:-1:]
+        bot = delta_v[0, ::-1, ::-1][1 : k + 1]
+
+    else:
+        mid = delta_v[2]
+        top = np.rot90(delta_v[0, ::, ::-1])[k:0:-1]
+        bot = np.rot90(delta_v[0, ::-1])[1 : k + 1]
+        left = delta_v[1, ::, ::-1][:, k:-1]
+        right = delta_v[1, ::-1, ::-1][:, 1 : k + 1]
+
+    empty = np.ma.masked_array(np.empty((k, k)), mask=True)
+    row_1 = np.ma.hstack([empty, top, empty])
+    row_2 = np.ma.hstack([left, mid, right])
+    row_3 = np.ma.hstack([empty, bot, empty])
+
+    return np.ma.vstack((row_1, row_2, row_3))
+
+
+def _debug_images(magnitudes: Sequence[NDArray]) -> list[RegistrationDebugImage]:
     # TODO: Add angles to x/y.
     # TODO: Implement circle version for output.
     # TODO: Implement -log(...) representation as the paper does (Fig. 3).
     # TODO: Add spherical output as in Figure 3.
     # TODO: Add spherical output using 3D rotation vectors (pytransform3d?).
+    # TODO: Add titles again (sector, minimum index, angles, ...).
 
     magnitudes = tuple(to_numpy_arrays(*magnitudes))
-    delta_v_norm = _delta_v_normalized(*magnitudes, xp=np)
-    delta_v_default = _delta_v_default(*magnitudes, xp=np)
 
     mpl.rc("font", size=8)
     # TODO: Check whether this is really faster.
     mpl.use("Agg")
 
-    kwargs = {"dim": 2, "copy": False}
-    return [
-        RegistrationDebugImage(
-            __combined_fig(delta_v_default), "ppft3-combined-default", **kwargs
-        ),
-        RegistrationDebugImage(
-            __combined_fig(delta_v_norm), "ppft3-combined-normalized", **kwargs
-        ),
-        RegistrationDebugImage(
-            __sectors_fig(delta_v_default), "ppft3-sectors-default", **kwargs
-        ),
-        RegistrationDebugImage(
-            __sectors_fig(delta_v_norm), "ppft3-sectors-normalized", **kwargs
-        ),
-    ]
+    debug_image_kwargs = {"dim": 2, "copy": False}
+
+    debug_images = []
+    for normalize in (True, False):
+        delta_func = _delta_v_normalized if normalize else _delta_v_default
+        delta_v = delta_func(*magnitudes, xp=np)
+
+        debug_images.append(
+            RegistrationDebugImage(
+                __build_rotation_axis_optimization_plots(delta_v),
+                f"optimization-norm={normalize}",
+                **debug_image_kwargs,
+            )
+        )
+
+        for optimize in (True, False):
+            index_func = _index_optimized if optimize else _index_default
+            sector_min_index = index_func(delta_v)
+
+            suffix = f"norm={normalize}-optimize={optimize}"
+            debug_images.extend(
+                (
+                    RegistrationDebugImage(
+                        __combined_fig(delta_v, *sector_min_index),
+                        f"combined-{suffix}",
+                        **debug_image_kwargs,
+                    ),
+                    RegistrationDebugImage(
+                        __sectors_fig(delta_v, *sector_min_index),
+                        f"sectors-{suffix}",
+                        **debug_image_kwargs,
+                    ),
+                )
+            )
+
+    return debug_images
 
 
-def __sectors_fig(delta_v: NDArray) -> NDArray:
-    """TODO."""
+def __sectors_fig(delta_v: NDArray, sector: Sector, min_index: MinimumIndex) -> NDArray:
     fig = plt.figure(constrained_layout=True)
-    axs = fig.subplots(nrows=1, ncols=3, sharey=True, sharex=True)
+    axs = fig.subplots(nrows=1, ncols=3)
 
     # Source: https://stackoverflow.com/a/68553479/24321379
     im = None
@@ -314,63 +416,88 @@ def __sectors_fig(delta_v: NDArray) -> NDArray:
         fig.colorbar(im, ax=axs, location="bottom")
 
     # Source: https://stackoverflow.com/a/70928130
-    min_index = np.unravel_index(delta_v.argmin(), delta_v.shape)
-    min_mark = Circle(tuple((np.array(min_index[1:]) + 0.5)[::-1]), 0.5, color="red")
-    min_ax = axs[min_index[0]]
+    min_mark = Circle((min_index[1], min_index[0]), 0.5, color="red")
+    min_ax = axs[sector]
     min_ax.add_patch(min_mark)
     min_ax.patch.set_linewidth(5)
     min_ax.patch.set_edgecolor("red")
 
-    fig.suptitle(__build_title(delta_v))
+    fig.suptitle("TODO")
 
     return fig_to_array(fig)
 
 
-def __combined_fig(delta_v: NDArray) -> NDArray:
-    """TODO."""
+def __combined_fig(delta_v: NDArray, sector: int, min_index: MinimumIndex) -> NDArray:
+    n = len(delta_v[0]) - 1
     fig = plt.figure(constrained_layout=True)
     ax = fig.subplots()
 
-    data = __combine_sectors(delta_v)
+    data = _combine_sectors(delta_v, sector=sector)
     im = ax.imshow(data, cmap=DEFAULT_DEBUG_CMAP)
 
+    min_index_shifted = tuple(np.array(min_index[::-1]) + n // 2)
     # Source: https://stackoverflow.com/a/70928130
-    min_index = np.unravel_index(data.argmin(), data.shape)
-    min_mark = Circle(tuple((np.array(min_index) + 0.5)[::-1]), 0.5, color="red")
+    min_mark = Circle(min_index_shifted, 0.5, color="red")
     ax.add_patch(min_mark)
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
 
-    fig.suptitle(__build_title(delta_v))
+    fig.suptitle("TODO")
     fig.colorbar(im, ax=ax, location="bottom")
 
     return fig_to_array(fig)
 
 
-def __combine_sectors(sectors: NDArray) -> NDArray:
-    k = len(sectors[0]) // 2
+def __build_rotation_axis_optimization_plots(delta_v: NDArray) -> NDArray:
+    # TODO: If possible, merge with actual optimization code.
+    sector, min_index = _index_default(delta_v)
+    combined_sectors = _combine_sectors(to_numpy_array(delta_v), sector=sector)
+    row, col = np.array(min_index) + len(delta_v[0]) // 2
 
-    mid = sectors[2]
-    top = np.rot90(sectors[0, ::, ::-1])[k:0:-1]
-    bot = np.rot90(sectors[0, ::-1])[1 : k + 1]
-    left = sectors[1, ::, ::-1][:, k:-1]
-    right = sectors[1, ::-1, ::-1][:, 1 : k + 1]
-    empty = np.ma.masked_array(np.empty((k, k)), mask=True)
+    center_matrix = combined_sectors[row - 1 : row + 2, col - 1 : col + 2]
+    center_value = center_matrix[1, 1]
 
-    row_1 = np.ma.hstack([empty, top, empty])
-    row_2 = np.ma.hstack([left, mid, right])
-    row_3 = np.ma.hstack([empty, bot, empty])
+    mask = np.zeros((3, 3), dtype=bool)
+    mask[1, 1] = True
+    neighbors = np.ma.array(center_matrix, mask=mask).compressed()
 
-    return np.ma.vstack((row_1, row_2, row_3))
+    if np.max(neighbors) <= 0:
+        msg = "Neighbor values are <= 0, cannot optimize minimum index"
+        logger.warning(msg)
 
+        plt.text(0.5, 0.5, msg, color="red", ha="center", va="center")
+        plt.axis("off")
+        return fig_to_array()
 
-def __build_title(delta_v: NDArray) -> str:
-    min_index = np.unravel_index(delta_v.argmin(), delta_v.shape)
+    weights = (center_value / neighbors) * (1 / 3)
+    directed_weights = weights[:, None] * OPTIMIZATION_DIRECTIONS
 
-    n_sector = f"N: {len(delta_v[1]) - 1}, Sector: {min_index[0] + 1}"
-    index = f"Index: {tuple(int(x) for x in min_index[1:])}"
-    value = f"Value: {delta_v.min():.3f}"
+    refinement = np.sum(directed_weights, axis=0)
 
-    theta, phi = np.rad2deg(_cartesian_from_delta_v(delta_v, xp=np)[1:])
-    degrees = rf"$\phi$: {phi:.2f}°, $\theta$: {theta:.2f}°"
+    matrix = np.array(center_matrix)
+    fig, ax = plt.subplots()
+    plt.title("3x3 Matrix with Center as Minimum")
+    plt.imshow(matrix, cmap="coolwarm")
+    plt.colorbar(label="Value")
 
-    return f"{n_sector}, {index}, {value}\n{degrees}"
+    for i, j in itertools.product(range(3), repeat=2):
+        ax.text(j, i, f"{matrix[i, j]:.2f}", ha="center", va="center", color="black")
+
+    indices = ["-1", "0", "1"]
+    ax.set_xticks(range(3), labels=indices)
+    ax.set_yticks(range(3), labels=indices)
+
+    plt.title("3x3 Matrix with Center as Minimum + Weighted Vectors and Refinement")
+
+    refinement_text = f"{np.array2string(refinement, precision=2, floatmode='fixed')}"
+    ax.text(0.52, 0.52, refinement_text, color="red", ha="left", va="top")
+
+    for weight in directed_weights:
+        plt.arrow(
+            1, 1, *weight[::-1], head_width=0.05, head_length=0.05, fc="gray", ec="gray"
+        )
+
+    plt.arrow(
+        1, 1, *refinement[::-1], head_width=0.1, head_length=0.1, fc="red", ec="red"
+    )
+
+    return fig_to_array(fig)

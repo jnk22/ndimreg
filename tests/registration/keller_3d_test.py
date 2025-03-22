@@ -105,6 +105,6 @@ def test_registration_3d_keller3d_rotation_shift(
     quat_dist = euler_xyz_to_quaternion_dist(rotations, result.transformation.rotation)
 
     # TODO: Re-implement as approximation test as approx_rotation().
+    assert quat_dist <= 1.95 * np.arctan(1 / image_size)  # ~3.49° for 32x32x32
     assert result.transformation.translation == shifts  # Shifts are exact here.
-    assert quat_dist <= 2.45 * np.arctan(1 / image_size)  # ~4.39° for 32x32x32
     assert result.transformation.scale is None  # Scaling is not supported.
