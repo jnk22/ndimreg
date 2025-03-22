@@ -17,10 +17,22 @@ IMAGE_PATH_F16_ADF_2D = "data/2d/f16_adf.png"
 # TODO: Find a way to make images re-usable as 'session' fixtures.
 
 
+def __strtobool(val: str) -> bool:
+    val = val.lower()
+    if val in {"y", "yes", "t", "true", "on", "1"}:
+        return True
+
+    if val in {"n", "no", "f", "false", "off", "0"}:
+        return False
+
+    msg = f"Invalid truth value: {val}"
+    raise ValueError(msg)
+
+
 @pytest.fixture
 def debug() -> bool:
     """Debugging parameter for test registrations."""
-    return bool(os.environ.get("DEBUG", False))
+    return __strtobool(os.getenv("DEBUG", "False"))
 
 
 @pytest.fixture
@@ -171,7 +183,7 @@ def input_shifts_3d_rounded(
     input_shifts_3d_subpixel: dict[str, float],
 ) -> dict[str, int]:
     """TODO."""
-    return {k: int(round(v)) for k, v in input_shifts_3d_subpixel.items()}
+    return {k: round(v) for k, v in input_shifts_3d_subpixel.items()}
 
 
 @pytest.fixture
@@ -194,7 +206,7 @@ def input_shifts_2d_rounded(
     input_shifts_2d_subpixel: dict[str, float],
 ) -> dict[str, int]:
     """TODO."""
-    return {k: int(round(v)) for k, v in input_shifts_2d_subpixel.items()}
+    return {k: round(v) for k, v in input_shifts_2d_subpixel.items()}
 
 
 @pytest.fixture
