@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import functools
 import itertools
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,9 +56,6 @@ def pseudopolar_to_cartesian_3d(
     """
     k, i, j = coordinates
 
-    # If k is zero, cartesian coordinates would not be correct.
-    k = sys.float_info.epsilon if np.isclose(k, 0) else k
-
     match sector:
         case 1:
             return k, -2 * i * k / n, -2 * j * k / n
@@ -99,7 +95,7 @@ def pseudopolar_to_spherical(
 
     r = np.sqrt(x**2 + y**2 + z**2)
 
-    phi = np.arccos(z / r)
+    phi = np.arccos(z / r) if r != 0 else 0
     theta = np.arctan2(y, x)
 
     return r, phi, theta
