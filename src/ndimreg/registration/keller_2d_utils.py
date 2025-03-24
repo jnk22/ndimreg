@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Annotated, Literal, TypeVar, overload
 
 import numpy as np
 import pytransform3d.rotations as pr
@@ -63,10 +63,9 @@ def _resolve_rotation(
     )
 
     delta_m_func = __delta_m_normalized if normalized else __delta_m_default
-    rsi = __generate_radial_sampling_intervals(n, xp=xp)
 
     with AutoScipyFftBackend(xp):
-        delta_m = delta_m_func(*magnitudes, xp=xp, rsi=rsi)
+        delta_m = delta_m_func(*magnitudes, xp=xp)
 
     omega = xp.atleast_2d(delta_m[..., :n] + delta_m[..., n:])
     min_omega = omega[xp.unravel_index(xp.argmin(omega), omega.shape)[0]]
@@ -90,15 +89,15 @@ def _resolve_rotation(
 def __generate_mask(n: int, *, xp: ModuleType) -> NDArray:
     rsi = __generate_radial_sampling_intervals(n, xp=xp)
 
-    return (xp.arange(n + 1) * rsi[:, None] > n).T
+    # TODO: Check whether 'n' is correct (paper uses '1' as limit).
+    return (rsi * xp.arange(n + 1)[:, None]) > n
 
 
 @functools.lru_cache
 def __generate_radial_sampling_intervals(n: int, xp: ModuleType) -> NDArray:
-    rsi = xp.sqrt(4 * ((xp.arange(n // 2 + 1) / n) ** 2) + 1)
+    rsi = xp.hypot(xp.linspace(0, 1, n // 2 + 1), 1)
 
-    # And return combined as [1.41, ..., 1, ..., 1.41].
-    return xp.stack((*rsi[:0:-1], *rsi))
+    return xp.concatenate((rsi[:0:-1], rsi))
 
 
 def __merge_sectors(m: NDArray, *, xp: ModuleType) -> NDArray:
@@ -107,34 +106,31 @@ def __merge_sectors(m: NDArray, *, xp: ModuleType) -> NDArray:
     return xp.moveaxis(merged, -1, -2)
 
 
-def __delta_m_default(
-    m1: NDArray, m2: NDArray, *, xp: ModuleType, rsi: NDArray
-) -> DeltaMArray:
+def __delta_m_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> DeltaMArray:
     # We combine multiple radial sampling intervals as
     # [1.41, ..., 1, ..., 1.41, ..., 1, ..., 1.41) for all angles.
     # Note the last element being excluded as its respective value is
     # equivalent to the first element in the array.
-    rsi_combined = xp.hstack((rsi, rsi[1:-1]))
+    rsi = __generate_radial_sampling_intervals(m1.shape[-1] - 1, xp=xp)
+    rsi_combined = xp.concatenate((rsi, rsi[1:-1]))
 
     return xp.nansum(xp.abs(m1 - m2) * rsi_combined[:, None], axis=-1)
 
 
-def __delta_m_normalized(
-    m1: NDArray, m2: NDArray, *, xp: ModuleType, **_kwargs: Any
-) -> DeltaMArray:
-    counts_1 = xp.sum(~xp.isnan(m1), axis=-1)
-    counts_2 = xp.sum(~xp.isnan(m2), axis=-1)
-    mean_1 = m1 - xp.nanmean(m1, axis=-1, keepdims=True)
-    mean_2 = m2 - xp.nanmean(m2, axis=-1, keepdims=True)
-    std_1 = xp.sqrt((1 / counts_1) * xp.nansum((m1 - mean_1) ** 2, axis=-1))
-    std_2 = xp.sqrt((1 / counts_2) * xp.nansum((m2 - mean_2) ** 2, axis=-1))
+def __delta_m_normalized(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> DeltaMArray:
+    centered_1 = m1 - xp.nanmean(m1, axis=-1, keepdims=True)
+    centered_2 = m2 - xp.nanmean(m2, axis=-1, keepdims=True)
 
-    return xp.nansum((mean_1 - mean_2) ** 2, axis=-1) / (std_1 * std_2)
+    std_1 = xp.sqrt(xp.nanvar(m1, axis=-1, ddof=0))
+    std_2 = xp.sqrt(xp.nanvar(m2, axis=-1, ddof=0))
+
+    return xp.nansum((centered_1 - centered_2) ** 2, axis=-1) / (std_1 * std_2)
 
 
 def __omega_indices(omega: OmegaArray) -> tuple[int, int, int]:
     n = len(omega)
     min_index = __index_default(omega)
+
     return (min_index - 1) % n, min_index, (min_index + 1) % n
 
 
