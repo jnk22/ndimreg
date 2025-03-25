@@ -69,6 +69,7 @@ def transform_2d(  # noqa: PLR0913
     window: WindowFilter = None,
     zoom: Zoom = None,
     rescale: bool = False,
+    noise: float | None = None,
     device: Device = "cpu",
     device_id: int = 0,
     debug_save: bool = False,
@@ -168,6 +169,7 @@ def transform_2d(  # noqa: PLR0913
             registration,
             tform_input=transformation_input,
             tform_params=transformation_params,
+            noise=noise,
             device=device,
             debug_save=debug_save,
             debug_show=debug_show,
@@ -202,6 +204,7 @@ def transform_3d(  # noqa: PLR0913
     window: WindowFilter = None,
     zoom: Zoom = None,
     rescale: bool = False,
+    noise: float | None = None,
     device: Device = "cpu",
     device_id: int = 0,
     debug_save: bool = False,
@@ -301,6 +304,7 @@ def transform_3d(  # noqa: PLR0913
             registration,
             tform_input=transformation_input,
             tform_params=transformation_params,
+            noise=noise,
             device=device,
             debug_save=debug_save,
             debug_show=debug_show,
@@ -318,6 +322,7 @@ def __transform_nd(  # noqa: PLR0913
     *,
     tform_params: dict[str, str | int],
     tform_input: Transformation,
+    noise: float | None = None,
     debug_save: bool,
     debug_show: bool,
     debug_depth: int | None,
@@ -328,6 +333,8 @@ def __transform_nd(  # noqa: PLR0913
     output_dir: Path,
 ) -> None:
     import sys
+
+    from skimage.util import random_noise
 
     from ndimreg.fusion import MergeFusion
     from ndimreg.image import Image2D, Image3D
@@ -340,6 +347,9 @@ def __transform_nd(  # noqa: PLR0913
 
     image_transformed = image.copy(name=f"{image_basename}-transformed")
     image_transformed.transform(tform_input, **tform_params)
+
+    if noise is not None:
+        image_transformed.data = random_noise(image_transformed.data, var=noise)
 
     result = image.register(registration, image_transformed, device=device)[0]
     print(f"Expected: {tform_input}")
