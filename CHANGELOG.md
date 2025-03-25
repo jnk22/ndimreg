@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-...
+### Added
+
+- Add rotation alignment axis for 3D registration method.
+
+### Changed
+
+- **BREAKING**: Use Z-axis as default angle alignment axis for
+  **Keller3DRegistration** registration method.
 
 ## [0.2.0] - 2025-03-14
 
