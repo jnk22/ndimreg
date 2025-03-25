@@ -62,6 +62,7 @@ app = App(name="benchmark")
 # TODO: Add seed input for generating same rotations again.
 # TODO: Allow random translation per rotation (i.e., non-matrix runs).
 # FIX: If something fails, transformation output and diff is not present (error).
+# FIX: On failure, objects 'duration', 'tform_diff', and 'tform_output' are present.
 
 DEFAULT_BENCHMARK_SAFE_PADS: Final = [True]
 DEFAULT_BENCHMARK_MAX_PADS: Final = [True]
