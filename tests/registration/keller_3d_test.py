@@ -18,6 +18,7 @@ from tests.test_constants import (
 
 if TYPE_CHECKING:
     from ndimreg.image import Image3D
+    from ndimreg.transform.types import RotationAxis3D
 
 # TODO: Implement rotation checks on a sphere.
 # TODO: Add more tests: Sub-pixel shifts and rotations.
@@ -77,6 +78,7 @@ def test_registration_3d_keller3d_equal_input_images(
 @pytest.mark.parametrize("rotation_z", [5, 25, 50, 80], ids=lambda x: f"rz={x}")
 @pytest.mark.parametrize("rotation_y", [5, 25, 50, 80], ids=lambda x: f"ry={x}")
 @pytest.mark.parametrize("rotation_x", [5, 25, 50, 80], ids=lambda x: f"rx={x}")
+@pytest.mark.parametrize("axis", ["x"], ids=lambda x: f"axis={x}")
 @pytest.mark.parametrize(
     "image_size", [TEST_IMAGE_SIZE_VAR_32], ids=lambda x: f"size={x}"
 )
@@ -86,6 +88,7 @@ def test_registration_3d_keller3d_rotation_shift(
     image_size: int,
     input_rotations_3d: dict[str, float],
     input_shifts_3d_rounded: dict[str, int],
+    axis: RotationAxis3D,
     *,
     debug: bool,
 ) -> None:
@@ -99,12 +102,12 @@ def test_registration_3d_keller3d_rotation_shift(
     # with a higher rotation error.
     image_transformed.transform(translation=shifts, rotation=rotations, clip=False)
 
-    registration = Keller3DRegistration(debug=debug)
+    registration = Keller3DRegistration(rotation_angle_axis=axis, debug=debug)
     result = registration.register(haase_image_3d_safe.data, image_transformed.data)
 
     quat_dist = euler_xyz_to_quaternion_dist(rotations, result.transformation.rotation)
 
     # TODO: Re-implement as approximation test as approx_rotation().
-    assert result.transformation.translation == shifts  # Shifts are exact here.
     assert quat_dist <= 2.45 * np.arctan(1 / image_size)  # ~4.39° for 32x32x32
+    assert result.transformation.translation == shifts  # Shifts are exact here.
     assert result.transformation.scale is None  # Scaling is not supported.

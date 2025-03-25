@@ -33,8 +33,18 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from ndimreg.transform.types import RotationAxis3D
+
 DEFAULT_DEBUG_CMAP: Final = "rainbow"
-U1: Final = (0.0, 0.0, 1.0)
+
+_U1_AXIS_MAP: dict[RotationAxis3D, tuple[float, float, float]] = {
+    "z": (1.0, 0.0, 0.0),
+    0: (1.0, 0.0, 0.0),
+    "y": (0.0, 1.0, 0.0),
+    1: (0.0, 1.0, 0.0),
+    "x": (0.0, 0.0, 1.0),
+    2: (0.0, 0.0, 1.0),
+}
 
 # PERF: Parallelize V1-tilde and V2-tilde transformations.
 # PERF: Parallelize magnitude calculation if not on GPU.
@@ -83,6 +93,7 @@ class Keller3DRegistration(BaseRegistration):
         rotation_axis_normalization: bool = False,  # NOTE: WIP.
         rotation_axis_optimization: bool = False,  # NOTE: Not yet implemented.
         rotation_axis_vectorized: bool = False,
+        rotation_angle_axis: RotationAxis3D = "z",
         rotation_angle_normalization: bool = True,
         rotation_angle_optimization: bool = True,
         rotation_angle_vectorized: bool = False,
@@ -119,13 +130,14 @@ class Keller3DRegistration(BaseRegistration):
         self._processors.insert(0, GrayscaleProcessor3D())
 
         self.__rotation_axis_normalization: bool = rotation_axis_normalization
+        self.__rotation_angle_axis: RotationAxis3D = rotation_angle_axis
         self.__rotation_axis_optimization: bool = rotation_axis_optimization
         self.__rotation_axis_vectorized: bool = rotation_axis_vectorized
         self.__highpass_filter: bool = highpass_filter
 
         # TODO: Test parameters 'disambiguate' and 'normalization'.
         self.__rotation_angle_registration = RotationAxis3DRegistration(
-            axis="x",
+            axis=rotation_angle_axis,
             shift_disambiguate=rotation_angle_shift_disambiguate,
             shift_normalization=rotation_angle_shift_normalization,
             shift_upsample_factor=rotation_angle_shift_upsample_factor,
@@ -165,8 +177,11 @@ class Keller3DRegistration(BaseRegistration):
             for im in images
         )
 
-        normalized = self.__rotation_axis_normalization
-        delta_v_func = _delta_v_normalized if normalized else _delta_v_default
+        delta_v_func = (
+            _delta_v_normalized
+            if self.__rotation_axis_normalization
+            else _delta_v_default
+        )
 
         with AutoScipyFftBackend(xp):
             if self.debug:
@@ -175,25 +190,31 @@ class Keller3DRegistration(BaseRegistration):
 
             delta_v = delta_v_func(*magnitudes, xp=xp)
 
-        # We build the roation matrix for Z-axis alignment as defined
+        # We build the rotation matrix for Z-axis alignment as defined
         # in section '4: Planar rotation'.
-        u2 = _cartesian_from_delta_v(delta_v, xp=xp)
-        axis_angle = pr.axis_angle_from_two_directions(U1, u2)
-        rot_mat_r_tilde = pr.matrix_from_axis_angle(axis_angle)
+        u1 = _U1_AXIS_MAP[self.__rotation_angle_axis]
+        u2 = to_numpy_array(_build_u2(delta_v, xp=xp))
+
+        axis_angle = pr.axis_angle_from_two_directions(u1, u2)
+        axis_rotation_matrix = pr.matrix_from_axis_angle(axis_angle)
 
         # We align both volumes onto the Z-axis.
-        tilde_images = (self._transform(im, rotation=rot_mat_r_tilde) for im in images)
+        axis_aligned_images = (
+            self._transform(im, rotation=axis_rotation_matrix) for im in images
+        )
 
         if self.debug:
             # Convert generator into re-usable tuple to keep for debug.
-            tilde_images = tuple(tilde_images)
+            axis_aligned_images = tuple(axis_aligned_images)
 
-        angle_result = self.__rotation_angle_registration.register(*tilde_images)
-        z_rot = angle_result.transformation.rotation
-        rot_mat_z_axis = pr.matrix_from_euler(
-            np.deg2rad(z_rot), 0, 1, 2, extrinsic=False
+        angle_result = self.__rotation_angle_registration.register(*axis_aligned_images)
+        angle_rotation_matrix = pr.matrix_from_euler(
+            np.deg2rad(angle_result.transformation.rotation), 0, 1, 2, extrinsic=False
         )
-        matrix = rot_mat_r_tilde @ inv(rot_mat_z_axis) @ inv(rot_mat_r_tilde)
+
+        inv_axis_rotation = inv(axis_rotation_matrix)
+        matrix = axis_rotation_matrix @ inv(angle_rotation_matrix) @ inv_axis_rotation
+
         angles = np.rad2deg(pr.euler_from_matrix(inv(matrix), 0, 1, 2, extrinsic=False))
         logger.debug(f"Recovered angles: [{', '.join(f'{x:.2f}' for x in angles)}]")
 
@@ -203,7 +224,7 @@ class Keller3DRegistration(BaseRegistration):
         logger.debug(f"Recovered shifts: [{', '.join(f'{x:.2f}' for x in shifts)}]")
 
         if self.debug:
-            debug_data = (*tilde_images, moving_rotated)
+            debug_data = (*axis_aligned_images, moving_rotated)
             debug_names = ("v1-tilde", "v2-tilde", "moving-rerotated")
             debug_images = [
                 *_create_magnitude_debug_images(tuple(magnitudes)),
@@ -222,30 +243,29 @@ class Keller3DRegistration(BaseRegistration):
 def _generate_mask(n: int, *, xp: ModuleType) -> NDArray:
     radial_limit = (3 * n + 1) / 2
     rsi = __generate_radial_sampling_intervals(n, xp=xp)
-    distances = rsi * xp.arange(radial_limit)[:, None, None]
+    distances = xp.arange(radial_limit)[:, None, None] * rsi
 
-    return (distances > radial_limit)[None, :]
+    return (distances > radial_limit)[None, ...]
 
 
 @functools.lru_cache
 def __generate_radial_sampling_intervals(n: int, *, xp: ModuleType) -> NDArray:
-    target_shape = (n + 1, n + 1)
-    x = (-2 * (xp.array(tuple(xp.ndindex(target_shape))) - n // 2) / n) ** 2 + 0.5
+    coords = xp.linspace(-1, 1, n + 1) ** 2 + 0.5
 
-    return xp.sqrt(xp.sum(x, axis=1)).reshape(target_shape)
+    return xp.hypot(coords[:, None], coords)
 
 
-def _cartesian_from_delta_v(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
+def _build_u2(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
     n = len(delta_v[1]) - 1
-    min_index = xp.array(xp.unravel_index(xp.argmin(delta_v), delta_v.shape))
-    sector = min_index[0].item()
-    pseudopolar_coords = min_index[1:] - n // 2
+    sector, *min_index = xp.unravel_index(xp.argmin(delta_v), delta_v.shape)
+    coords = -2 * (xp.array(min_index) - n // 2) / n
 
-    return np.insert(to_numpy_array(-2 * pseudopolar_coords / n), sector, 1)
+    return xp.concatenate((coords[:sector], xp.array([1.0]), coords[sector:]))
 
 
 def _delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
     rsi = __generate_radial_sampling_intervals(m1.shape[2] - 1, xp=xp)
+
     return xp.nansum(xp.abs(m1 - m2) * rsi, axis=1)
 
 
@@ -366,7 +386,7 @@ def __build_title(delta_v: NDArray) -> str:
     index = f"Index: {tuple(int(x) for x in min_index[1:])}"
     value = f"Value: {delta_v.min():.3f}"
 
-    theta, phi = np.rad2deg(_cartesian_from_delta_v(delta_v, xp=np)[1:])
+    theta, phi = np.rad2deg(_build_u2(delta_v, xp=np)[1:])
     degrees = rf"$\phi$: {phi:.2f}°, $\theta$: {theta:.2f}°"
 
     return f"{n_sector}, {index}, {value}\n{degrees}"
