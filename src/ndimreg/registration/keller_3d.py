@@ -244,23 +244,19 @@ def _cartesian_from_delta_v(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
     return np.insert(to_numpy_array(-2 * pseudopolar_coords / n), sector, 1)
 
 
-def _delta_v_normalized(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
-    # This is the implementation of the 'normalized correlation',
-    # equation 3.9. This does not seem to produce anything useful
-    # yet in comparison to the non-normalized version.
-    # Source: https://de.mathworks.com/help/images/ref/normxcorr2.html
-    # TODO: Compare with the solution as presented in the paper:
-    # 'Normalized correlation for pattern recognition' [24].
-    x1 = m1 - xp.nanmean(m1, 1, keepdims=True)
-    x2 = m2 - xp.nanmean(m2, 1, keepdims=True)
-    denominator = xp.sqrt(xp.nansum(x1**2, axis=1) * xp.nansum(x2**2, axis=1))
-
-    return -(xp.nansum(x1 * x2, axis=1) / denominator)
-
-
 def _delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
     rsi = __generate_radial_sampling_intervals(m1.shape[2] - 1, xp=xp)
     return xp.nansum(xp.abs(m1 - m2) * rsi, axis=1)
+
+
+def _delta_v_normalized(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
+    centered_1 = m1 - xp.nanmean(m1, axis=1, keepdims=True)
+    centered_2 = m2 - xp.nanmean(m2, axis=1, keepdims=True)
+
+    std_1 = xp.sqrt(xp.nanvar(m1, axis=1, ddof=0))
+    std_2 = xp.sqrt(xp.nanvar(m2, axis=1, ddof=0))
+
+    return xp.nansum((centered_1 - centered_2) ** 2, axis=1) / (std_1 * std_2)
 
 
 def _create_magnitude_debug_images(
