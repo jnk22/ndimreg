@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytransform3d.rotations as pr
 from array_api_compat import get_namespace
-from loguru import logger
 from matplotlib.patches import Circle
 from numpy.linalg import inv
 from ppftpy import ppft3, rppft3
@@ -216,12 +215,10 @@ class Keller3DRegistration(BaseRegistration):
         matrix = axis_rotation_matrix @ inv(angle_rotation_matrix) @ inv_axis_rotation
 
         angles = np.rad2deg(pr.euler_from_matrix(inv(matrix), 0, 1, 2, extrinsic=False))
-        logger.debug(f"Recovered angles: [{', '.join(f'{x:.2f}' for x in angles)}]")
 
         moving_rotated = self._transform(moving, rotation=matrix)
         shift_result = self.__shift_registration.register(fixed, moving_rotated)
         shifts = shift_result.transformation.translation
-        logger.debug(f"Recovered shifts: [{', '.join(f'{x:.2f}' for x in shifts)}]")
 
         if self.debug:
             debug_data = (*axis_aligned_images, moving_rotated)

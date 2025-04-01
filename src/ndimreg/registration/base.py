@@ -127,6 +127,9 @@ class BaseRegistration(ABC, Registration):
 
             timer.start_interval("postprocessing")
             tform_postprocessed = self.__post_process_result(result.transformation)
+            logger.debug(
+                f"Recovered transformation in {self.name}: {tform_postprocessed}"
+            )
 
             timer.start_interval("result")
             debug_images: RegistrationDebugImages = {
