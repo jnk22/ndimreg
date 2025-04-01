@@ -129,7 +129,7 @@ class Keller2DRegistration(BaseRegistration):
             normalized=self.__rotation_normalization,
             optimized=self.__rotation_optimization,
             highpass_filter=self.__highpass_filter,
-            is_complex=any(xp.iscomplexobj(im) for im in images),
+            is_complex=any(xp.isdtype(im.dtype, "complex floating") for im in images),
             debug=self.debug,
         )
 
