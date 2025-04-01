@@ -114,7 +114,7 @@ class BaseRegistration(ABC, Registration):
         # PERF: Check for cachable functions within registration methods.
 
         with Timer(interval_name="input") as timer:
-            logger.debug(f"Registering images with '{self.__class__.__name__}'")
+            logger.debug(f"Registering images with '{self.name}'")
             debug_images_input = self.__build_debug_images_guarded(fixed, moving)
 
             timer.start_interval("preprocessing")
