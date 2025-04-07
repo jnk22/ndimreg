@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any, Final, Literal
 
+import array_api_compat.numpy as xnp
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -260,7 +261,7 @@ def _build_u2(delta_v: NDArray, *, xp: ModuleType) -> NDArray:
     sector, *min_index = xp.unravel_index(xp.argmin(delta_v), delta_v.shape)
     coords = -2 * (xp.array(min_index) - n // 2) / n
 
-    return xp.concatenate((coords[:sector], xp.array([1.0]), coords[sector:]))
+    return xp.concat((coords[:sector], xp.array([1.0]), coords[sector:]))
 
 
 def _delta_v_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> NDArray:
@@ -289,8 +290,8 @@ def _create_magnitude_debug_images(
     # TODO: Add spherical output using 3D rotation vectors (pytransform3d?).
 
     magnitudes = tuple(to_numpy_arrays(*magnitudes))
-    delta_v_norm = _delta_v_normalized(*magnitudes, xp=np)
-    delta_v_default = _delta_v_default(*magnitudes, xp=np)
+    delta_v_norm = _delta_v_normalized(*magnitudes, xp=xnp)
+    delta_v_default = _delta_v_default(*magnitudes, xp=xnp)
 
     mpl.rc("font", size=8)
     # TODO: Check whether this is really faster.
@@ -386,7 +387,7 @@ def __build_title(delta_v: NDArray) -> str:
     index = f"Index: {tuple(int(x) for x in min_index[1:])}"
     value = f"Value: {delta_v.min():.3f}"
 
-    theta, phi = np.rad2deg(_build_u2(delta_v, xp=np)[1:])
+    theta, phi = np.rad2deg(_build_u2(delta_v, xp=xnp)[1:])
     degrees = rf"$\phi$: {phi:.2f}°, $\theta$: {theta:.2f}°"
 
     return f"{n_sector}, {index}, {value}\n{degrees}"
