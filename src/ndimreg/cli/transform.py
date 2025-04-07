@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from cyclopts import App
 from cyclopts.types import Json, ResolvedDirectory, ResolvedExistingFile  # noqa: TC002
@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     from ndimreg.registration import Registration
     from ndimreg.transform import Transformation
 
+EMPTY_OPTIONS: Final[dict] = {}
+
 app = App(name="transform")
 
 # TODO: Combine debug output with result images (show mode).
@@ -59,7 +61,7 @@ def transform_2d(  # noqa: PLR0913
     scale: Scale | None = None,
     interpolation_order: InterpolationOrder = 3,
     transformation_order: TransformationOrder = "trs",
-    options: Json = "{}",
+    options: Json | dict = EMPTY_OPTIONS,
     normalize: bool = True,
     resize: Resize = None,
     spacing: Spacing2D | None = None,
@@ -126,14 +128,8 @@ def transform_2d(  # noqa: PLR0913
         zoom=zoom, rescale=rescale, bandpass=bandpass, window=window, dim=3
     )
 
-    # Registration options must be coerced into actual dictionary.
-    # If empty JSON string ('{}') has been provided, it will not
-    # automatically be a proper dict which would result in an error.
-    registration_options = options if isinstance(options, dict) else {}
     registration = REGISTRATION_METHODS_2D[method](
-        processors=pre_processors,
-        debug=debug_show or debug_save,
-        **registration_options,
+        processors=pre_processors, debug=debug_show or debug_save, **options
     )
 
     transformation_params = {
@@ -194,7 +190,7 @@ def transform_3d(  # noqa: PLR0913
     interpolation_order: InterpolationOrder = 3,
     transformation_order: TransformationOrder = "trs",
     rotation_axis: RotationAxis3D = "z",
-    options: Json = "{}",
+    options: Json | dict = EMPTY_OPTIONS,
     normalize: bool = True,
     resize: Resize = None,
     spacing: Spacing3D | None = None,
@@ -259,15 +255,11 @@ def transform_3d(  # noqa: PLR0913
         zoom=zoom, rescale=rescale, bandpass=bandpass, window=window, dim=3
     )
 
-    # Registration options must be coerced into actual dictionary.
-    # If empty JSON string ('{}') has been provided, it will not
-    # automatically be a proper dict which would result in an error.
-    registration_options = options if isinstance(options, dict) else {}
     registration = REGISTRATION_METHODS_3D[method](
         axis=rotation_axis,
         processors=pre_processors,
         debug=debug_show or debug_save,
-        **registration_options,
+        **options,
     )
 
     transformation_params = {

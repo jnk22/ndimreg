@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from cyclopts import App
 from cyclopts.types import Json, ResolvedDirectory, ResolvedExistingFile  # noqa: TC002
@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from ndimreg.image import Image, ImageLoader
     from ndimreg.registration import Registration
 
+EMPTY_OPTIONS: Final[dict] = {}
+
 app = App(name="register")
 
 # TODO: Combine debug output with result images (show mode).
@@ -46,7 +48,7 @@ def register_2d(  # noqa: PLR0913
     moving_image_paths: list[ResolvedExistingFile],
     *,
     method: RegistrationMethod2D = "keller-adf-2d",
-    options: Json = "{}",
+    options: Json | dict = EMPTY_OPTIONS,
     interpolation_order: InterpolationOrder = 3,
     transformation_order: TransformationOrder = "trs",
     normalize: bool = True,
@@ -112,14 +114,8 @@ def register_2d(  # noqa: PLR0913
         zoom=zoom, rescale=rescale, bandpass=bandpass, window=window, dim=2
     )
 
-    # Registration options must be coerced into actual dictionary.
-    # If empty JSON string ('{}') has been provided, it will not
-    # automatically be a proper dict which would result in an error.
-    registration_options = options if isinstance(options, dict) else {}
     registration = REGISTRATION_METHODS_2D[method](
-        processors=pre_processors,
-        debug=debug_show or debug_save,
-        **registration_options,
+        processors=pre_processors, debug=debug_show or debug_save, **options
     )
 
     __register_nd(
@@ -145,7 +141,7 @@ def register_3d(  # noqa: PLR0913
     moving_image_paths: list[ResolvedExistingFile],  # TODO: Require at least one.
     *,
     method: RegistrationMethod3D = "keller-3d",
-    options: Json = "{}",
+    options: Json | dict = EMPTY_OPTIONS,
     interpolation_order: InterpolationOrder = 3,
     transformation_order: TransformationOrder = "trs",
     rotation_axis: RotationAxis3D = "z",
@@ -211,15 +207,11 @@ def register_3d(  # noqa: PLR0913
         zoom=zoom, rescale=rescale, bandpass=bandpass, window=window, dim=3
     )
 
-    # Registration options must be coerced into actual dictionary.
-    # If empty JSON string ('{}') has been provided, it will not
-    # automatically be a proper dict which would result in an error.
-    registration_options = options if isinstance(options, dict) else {}
     registration = REGISTRATION_METHODS_3D[method](
         axis=rotation_axis,
         processors=pre_processors,
         debug=debug_show or debug_save,
-        **registration_options,
+        **options,
     )
 
     __register_nd(
