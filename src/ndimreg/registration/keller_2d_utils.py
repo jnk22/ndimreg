@@ -97,11 +97,11 @@ def __generate_mask(n: int, *, xp: ModuleType) -> NDArray:
 def __generate_radial_sampling_intervals(n: int, xp: ModuleType) -> NDArray:
     rsi = xp.hypot(xp.linspace(0, 1, n // 2 + 1), 1)
 
-    return xp.concatenate((rsi[:0:-1], rsi))
+    return xp.concat((rsi[:0:-1], rsi))
 
 
 def __merge_sectors(m: NDArray, *, xp: ModuleType) -> NDArray:
-    merged = xp.concatenate((m[..., 0, :, :], m[..., 1, :, -2:0:-1]), axis=-1)
+    merged = xp.concat((m[..., 0, :, :], m[..., 1, :, -2:0:-1]), axis=-1)
 
     return xp.moveaxis(merged, -1, -2)
 
@@ -112,7 +112,7 @@ def __delta_m_default(m1: NDArray, m2: NDArray, *, xp: ModuleType) -> DeltaMArra
     # Note the last element being excluded as its respective value is
     # equivalent to the first element in the array.
     rsi = __generate_radial_sampling_intervals(m1.shape[-1] - 1, xp=xp)
-    rsi_combined = xp.concatenate((rsi, rsi[1:-1]))
+    rsi_combined = xp.concat((rsi, rsi[1:-1]))
 
     return xp.nansum(xp.abs(m1 - m2) * rsi_combined[:, None], axis=-1)
 
