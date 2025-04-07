@@ -168,7 +168,7 @@ class Keller3DRegistration(BaseRegistration):
 
         n = len(fixed)
         mask = _generate_mask(n, xp=xp) if self.__highpass_filter else False
-        is_complex = any(xp.iscomplexobj(im) for im in images)
+        is_complex = any(xp.isdtype(im.dtype, "complex floating") for im in images)
         ppft, idx = (ppft3, n) if is_complex else (rppft3, 0)
         ppft_kwargs = {"vectorized": self.__rotation_axis_vectorized, "scipy_fft": True}
 

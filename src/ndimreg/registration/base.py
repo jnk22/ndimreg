@@ -182,7 +182,9 @@ class BaseRegistration(ABC, Registration):
         logger.debug(f"Using namespace for debug images: {xp.__name__}")
 
         images_corrected = (
-            fftshift(xp.log1p(xp.abs(im))) if xp.iscomplexobj(im) else im
+            fftshift(xp.log1p(xp.abs(im)))
+            if xp.isdtype(im.dtype, "complex floating")
+            else im
             for im in images
         )
 
