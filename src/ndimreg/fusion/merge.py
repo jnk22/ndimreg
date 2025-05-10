@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from typing_extensions import override
 
 from .base import BaseFusion
@@ -41,7 +41,7 @@ class MergeFusion(BaseFusion):
 
     @override
     def _fuse(self, *images: NDArray, **_kwargs: Any) -> NDArray:
-        xp = get_namespace(*images)
+        xp = array_namespace(*images)
 
         alpha = self.__alpha or 1 / len(images)
         data = xp.sum(xp.asarray(images) * alpha, 0)

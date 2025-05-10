@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import skimage
 import skimage.io as skio
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from loguru import logger
 
 from ndimreg.transform import get_center, resize, rotate_axis, transform
@@ -498,4 +498,4 @@ class Image(ABC):
 
     @property
     def __namespace(self) -> ModuleType:
-        return get_namespace(self.data)
+        return array_namespace(self.data)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from loguru import logger
 from scipy import fft
 
@@ -49,7 +49,7 @@ def resolve_shift(
     # TODO: Test whether rotating FFT is equal to FFT2 of rotated image.
     # TODO: Test whether 'real' FFT can be used instead.
     # TODO: Use fallback instance for translation registration method.
-    xp = get_namespace(fixed, moving)
+    xp = array_namespace(fixed, moving)
 
     with AutoScipyFftBackend(xp):
         fixed_fft = fft.fftn(fixed)

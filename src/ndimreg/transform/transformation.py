@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytransform3d.rotations as pr
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from loguru import logger
 
 from ndimreg.utils import array_to_shape, log_time
@@ -102,7 +102,7 @@ def transform(  # noqa: PLR0913
     }
 
     # NOTE: 2D transformations might need to be inverted.
-    xp = get_namespace(data)
+    xp = array_namespace(data)
     tform = xp.asarray(np.linalg.inv(transformation) if inverse else transformation)
     transformed_data = (
         xp.stack(

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 
 import numpy as np
 import pytransform3d.rotations as pr
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor3D
@@ -78,7 +78,7 @@ class RotationAxis3DRegistration(BaseRegistration):
     ) -> ResultInternal3D:
         # TODO: Support complex image input.
         images = (fixed, moving)
-        xp = get_namespace(*images)
+        xp = array_namespace(*images)
 
         rotation, debug_images = _resolve_rotation(
             (xp.moveaxis(im, SRC, DEST[self.__rotation_axis]) for im in images),
