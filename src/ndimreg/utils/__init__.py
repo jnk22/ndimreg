@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .arrays import (
     to_cupy_array,
     to_cupy_arrays,

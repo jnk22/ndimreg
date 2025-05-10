@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import itertools
-from collections.abc import Generator, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytransform3d.rotations as pr
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
 
 # TODO: Normalize rotation angle inputs (or restrict to range).
 # TODO: Validate input (amount in [0, -x])

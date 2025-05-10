@@ -1,10 +1,14 @@
 """TODO."""
 
-from typing import SupportsFloat, overload
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, SupportsFloat, overload
 
 import numpy as np
 import pytransform3d.rotations as pr
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 NumericType = int | float | np.integer | np.floating
 

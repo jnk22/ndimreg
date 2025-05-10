@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .data import Transformation, Transformation2D, Transformation3D
 from .transformation import (
     axis_rotation_matrix,
