@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
+import imageio.v3 as iio
 import numpy as np
 import skimage
 import skimage.io as skio
@@ -97,7 +98,7 @@ class Image(ABC):
             path = Path(path)
 
         logger.debug(f"Loading image from '{path}'")
-        data = skio.imread(path)
+        data = iio.imread(path)
 
         return cls(data, name or path.stem, copy=False, device=device)
 
@@ -489,7 +490,7 @@ class Image(ABC):
         path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            skio.imsave(path, img_as_ubyte(self.data))
+            iio.imwrite(path, img_as_ubyte(self.data))
         except ValueError as e:
             logger.error(f"Failed to save image '{self.name}' at '{path}': {e}")
 
