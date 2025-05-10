@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, TypeVar, overload
 
 import numpy as np
 import pytransform3d.rotations as pr
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from loguru import logger
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
@@ -135,7 +135,7 @@ def __omega_indices(omega: OmegaArray) -> tuple[int, int, int]:
 
 
 def __index_default(omega: OmegaArray) -> int:
-    return get_namespace(omega).argmin(omega).item()
+    return array_namespace(omega).argmin(omega).item()
 
 
 @overload

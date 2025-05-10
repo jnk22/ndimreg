@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from typing_extensions import override
 
 from ndimreg.processor import GrayscaleProcessor2D
@@ -119,7 +119,7 @@ class Keller2DRegistration(BaseRegistration):
         self, fixed: NDArray, moving: NDArray, **_kwargs: Any
     ) -> ResultInternal2D:
         images = (fixed, moving)
-        xp = get_namespace(*images)
+        xp = array_namespace(*images)
 
         rotation, debug_images = _resolve_rotation(
             images,

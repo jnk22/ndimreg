@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 import numpy as np
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from loguru import logger
 from pytransform3d.rotations import norm_angle
 from scipy import fft
@@ -100,7 +100,7 @@ class Scikit2DRegistration(BaseRegistration):
     def _register(
         self, fixed: NDArray, moving: NDArray, **_kwargs: Any
     ) -> ResultInternal2D:
-        xp = get_namespace(fixed, moving)
+        xp = array_namespace(fixed, moving)
         fft_images = (xp.abs(fft.fftshift(fft.fft2(im))) for im in (fixed, moving))
         shape = fixed.shape
         radius = shape[0] // 8

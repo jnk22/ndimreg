@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from typing_extensions import override
 
 from .base import BaseDataProcessor
@@ -50,7 +50,7 @@ class ThresholdCutFilter(BaseDataProcessor):
 
     def __process_group(self, *data: NDArray) -> list[NDArray]:
         """TODO."""
-        xp = get_namespace(*data)
+        xp = array_namespace(*data)
 
         match self.__cval:
             case "min":

@@ -34,7 +34,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from array_api_compat import get_namespace, is_cupy_array
+from array_api_compat import array_namespace, is_cupy_array
 from loguru import logger
 from scipy.ndimage import affine_transform as at_cpu
 from skimage.color import rgb2gray as r2g_cpu
@@ -99,7 +99,7 @@ def affine_transform(image: NDArray, inverse_map: NDArray, **kwargs: Any) -> NDA
     # We need to transfer the transformed data back to the original
     # image's backend in case of using the CPU-based transform on
     # data that uses it as fallback.
-    xp = get_namespace(image)
+    xp = array_namespace(image)
     return xp.asarray(affine_transform(image, inverse_map, **kwargs))
 
 
@@ -129,7 +129,7 @@ def resize_local_mean(
     **kwargs: Any,
 ) -> NDArray:
     """TODO."""
-    xp = get_namespace(image)
+    xp = array_namespace(image)
 
     if is_cupy_array(image) and cp:
         if rlm_gpu:
@@ -148,7 +148,7 @@ def warp_polar(
     image: NDArray, center: tuple[int, int] | None = None, **kwargs: Any
 ) -> NDArray:
     """TODO."""
-    xp = get_namespace(image)
+    xp = array_namespace(image)
 
     if is_cupy_array(image) and cp:
         if wp_gpu:
@@ -165,7 +165,7 @@ def warp_polar(
 
 def rgb2gray(rgb: NDArray, **kwargs: Any) -> NDArray:
     """TODO."""
-    xp = get_namespace(rgb)
+    xp = array_namespace(rgb)
 
     if is_cupy_array(rgb) and cp:
         if r2g_gpu:
@@ -186,7 +186,7 @@ def rescale_intensity(
     out_range: str | tuple[float, float] = "dtype",
 ) -> NDArray:
     """TODO."""
-    xp = get_namespace(data)
+    xp = array_namespace(data)
 
     if is_cupy_array(data) and cp:
         if ri_gpu:
@@ -208,7 +208,7 @@ def difference_of_gaussians(
     **kwargs: Any,
 ) -> NDArray:
     """TODO."""
-    xp = get_namespace(image)
+    xp = array_namespace(image)
 
     if is_cupy_array(image) and cp:
         if dog_gpu:
@@ -230,7 +230,7 @@ def window(
     warp_kwargs: Any | None = None,
 ) -> NDArray:
     """TODO."""
-    xp = get_namespace(image)
+    xp = array_namespace(image)
 
     if is_cupy_array(image) and cp:
         if w_gpu:

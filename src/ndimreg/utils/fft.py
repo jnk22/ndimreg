@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Final, Literal
 
-from array_api_compat import get_namespace, is_cupy_namespace
+from array_api_compat import array_namespace, is_cupy_namespace
 from scipy import fft
 
 try:
@@ -70,7 +70,7 @@ class AutoScipyFftBackend:
     @classmethod
     def from_array(cls, *arrays: NDArray) -> Self:
         """TODO."""
-        return cls(get_namespace(*arrays))
+        return cls(array_namespace(*arrays))
 
     def __enter__(self) -> Any:
         """TODO."""

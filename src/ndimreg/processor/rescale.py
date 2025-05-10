@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from typing_extensions import override
 
 from ndimreg.utils.image_operations import rescale_intensity
@@ -26,7 +26,7 @@ class RescaleProcessor(BaseDataProcessor):
     def process(self, *data: NDArray) -> list[NDArray]:
         """TODO."""
         if self.group:
-            xp = get_namespace(*data)
+            xp = array_namespace(*data)
             in_range = xp.min([*data]), xp.max([*data])
         else:
             in_range = "image"

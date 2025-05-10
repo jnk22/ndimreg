@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from array_api_compat import get_namespace, is_cupy_namespace
+from array_api_compat import array_namespace, is_cupy_namespace
 from imreg_dft.imreg import _similarity
 from loguru import logger
 from typing_extensions import override
@@ -123,7 +123,7 @@ class ImregDft2DRegistration(BaseRegistration):
     def _register(
         self, fixed: NDArray, moving: NDArray, **_kwargs: Any
     ) -> ResultInternal2D:
-        if is_cupy_namespace(get_namespace(fixed, moving)):
+        if is_cupy_namespace(array_namespace(fixed, moving)):
             msg = f"Registration method {self.name} does not support GPU device (CuPy), transfering data to CPU (NumPy)"
             logger.warning(msg)
             fixed, moving = to_numpy_arrays(fixed, moving)

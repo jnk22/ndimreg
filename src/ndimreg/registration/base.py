@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from loguru import logger
 from scipy.fft import fftshift
 
@@ -181,7 +181,7 @@ class BaseRegistration(ABC, Registration):
         suffix: str = "",
         copy: bool = True,
     ) -> list[RegistrationDebugImage]:
-        xp = get_namespace(*images)
+        xp = array_namespace(*images)
         logger.debug(f"Using namespace for debug images: {xp.__name__}")
 
         images_corrected = (

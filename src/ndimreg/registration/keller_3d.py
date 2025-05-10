@@ -10,7 +10,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pytransform3d.rotations as pr
-from array_api_compat import get_namespace
+from array_api_compat import array_namespace
 from matplotlib.patches import Circle
 from numpy.linalg import inv
 from ppftpy import ppft3, rppft3
@@ -164,7 +164,7 @@ class Keller3DRegistration(BaseRegistration):
         self, fixed: NDArray, moving: NDArray, **_kwargs: Any
     ) -> ResultInternal3D:
         images = (fixed, moving)
-        xp = get_namespace(*images)
+        xp = array_namespace(*images)
 
         n = len(fixed)
         mask = _generate_mask(n, xp=xp) if self.__highpass_filter else False
