@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mkl_fft._scipy_fft_backend as mkl_fft
 from scipy import fft
 

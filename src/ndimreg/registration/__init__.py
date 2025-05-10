@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .base import BaseRegistration
 from .imregdft_2d import ImregDft2DRegistration
 from .keller_2d import Keller2DRegistration

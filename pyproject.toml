@@ -168,6 +168,7 @@ ignore = ["COM812", "FIX002", "TD002", "TD003"]
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
+required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.flake8-type-checking]
 strict = true

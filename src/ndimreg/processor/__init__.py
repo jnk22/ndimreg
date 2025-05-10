@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .bandpass import GaussianBandPassFilter
 from .base import BaseDataProcessor
 from .grayscale import GrayscaleProcessor2D, GrayscaleProcessor3D

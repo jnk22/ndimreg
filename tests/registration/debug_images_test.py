@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
 from ndimreg.registration import (
-    BaseRegistration,
     ImregDft2DRegistration,
     Keller2DRegistration,
     Keller3DRegistration,
@@ -11,6 +14,9 @@ from ndimreg.registration import (
     TranslationFFT2DRegistration,
     TranslationFFT3DRegistration,
 )
+
+if TYPE_CHECKING:
+    from ndimreg.registration import BaseRegistration
 
 REGISTRATION_METHODS_2D = [
     Keller2DRegistration,

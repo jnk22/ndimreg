@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ndimreg.fusion import MergeFusion
 from ndimreg.image import Image2D
 from ndimreg.processor import GaussianBandPassFilter, WindowFilter

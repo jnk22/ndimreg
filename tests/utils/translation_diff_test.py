@@ -1,11 +1,17 @@
 """TODO."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from numpy.typing import NDArray
 
 from ndimreg.utils.diffs import translation_diff
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 @pytest.mark.parametrize(
